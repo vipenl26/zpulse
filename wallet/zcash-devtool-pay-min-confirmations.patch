@@ -1,0 +1,39 @@
+diff --git a/src/commands/wallet/pay.rs b/src/commands/wallet/pay.rs
+index 712c7e6..74cae51 100644
+--- a/src/commands/wallet/pay.rs
++++ b/src/commands/wallet/pay.rs
+@@ -6,6 +6,7 @@ use uuid::Uuid;
+ 
+ use zip321::TransactionRequest;
+ 
++use zcash_client_backend::data_api::wallet::ConfirmationsPolicy;
+ use zcash_primitives::transaction::TxVersion;
+ 
+ use crate::{
+@@ -45,6 +46,12 @@ pub(crate) struct Command {
+     /// Do not require confirmation after inspection of the generated proposal
+     #[arg(long)]
+     disable_confirmation: bool,
++
++    /// Minimum confirmations for spendable notes (default: standard policy,
++    /// 3 trusted / 10 untrusted). Added for zpulse so heartbeats can spend
++    /// recently received notes.
++    #[arg(long)]
++    min_confirmations: Option<std::num::NonZeroU32>,
+ }
+ 
+ impl PaymentContext for Command {
+@@ -76,6 +83,13 @@ impl PaymentContext for Command {
+     fn tx_version(&self) -> Option<TxVersion> {
+         None
+     }
++
++    fn confirmations_policy(&self) -> ConfirmationsPolicy {
++        self.min_confirmations.map_or_else(
++            ConfirmationsPolicy::default,
++            |n| ConfirmationsPolicy::new_symmetrical(n, true),
++        )
++    }
+ }
+ 
+ impl Command {

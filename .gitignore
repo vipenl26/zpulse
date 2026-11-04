@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+data/
+data-mock/
+wallet/data
+wallet/zcash-devtool

@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>zpulse</title>
+<style>
+  :root {
+    --bg: #0b0d10; --panel: #14181d; --line: #252b33; --text: #e8ecf1; --dim: #8a94a3;
+    --zec: #f4b728; --ok: #3ddc84; --warn: #ffb020; --bad: #ff4d4f; --blue: #5aa9ff;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, "Segoe UI", Inter, Roboto, sans-serif; }
+  body { min-height: 100vh; padding: 28px 40px; display: flex; flex-direction: column; gap: 22px; }
+  a { color: var(--blue); text-decoration: none; }
+  header { display: flex; align-items: baseline; gap: 22px; flex-wrap: wrap; }
+  .logo { font-size: 40px; font-weight: 800; letter-spacing: -1px; }
+  .logo span { color: var(--zec); }
+  .tag { font-size: 20px; color: var(--dim); }
+  .badge { font: 600 16px var(--mono); padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); color: var(--dim); }
+  .badge.testnet { color: var(--zec); border-color: var(--zec); }
+  .spacer { flex: 1; }
+  .clock { font: 500 18px var(--mono); color: var(--dim); text-align: right; }
+
+  main { display: grid; grid-template-columns: 1fr 460px; gap: 26px; flex: 1; min-height: 0; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 22px 26px; }
+  .label { font-size: 15px; letter-spacing: 2px; text-transform: uppercase; color: var(--dim); font-weight: 600; }
+
+  #hero { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 26px; position: relative; overflow: hidden; }
+  #vaultname { font-size: 28px; font-weight: 600; margin-top: 6px; }
+  #vaultmeta { font: 17px var(--mono); color: var(--dim); margin-top: 6px; }
+  #count { font: 800 min(220px, 16vw)/1 var(--mono); letter-spacing: -6px; margin: 18px 0 6px; color: var(--ok); transition: color .3s; font-variant-numeric: tabular-nums; }
+  #count.warn { color: var(--warn); }
+  #count.bad { color: var(--bad); animation: blink 1s steps(2) infinite; }
+  #count.released { color: var(--bad); font-size: min(170px, 11vw); letter-spacing: 0; animation: none; }
+  #count.cancelled, #count.idle { color: var(--dim); font-size: min(150px, 10vw); letter-spacing: 0; }
+  @keyframes blink { 50% { opacity: .55; } }
+  #sub { font-size: 26px; color: var(--dim); min-height: 34px; }
+  #sub b { color: var(--text); }
+  .beat { position: absolute; inset: 0; border: 4px solid var(--ok); border-radius: 18px; opacity: 0; pointer-events: none; }
+  .beat.go { animation: beat 1.2s ease-out; }
+  .beat.duress { border-color: var(--bad); }
+  @keyframes beat { 0% { opacity: 1; box-shadow: inset 0 0 120px rgba(61,220,132,.35); } 100% { opacity: 0; } }
+
+  #prog { margin-top: 26px; width: 100%; max-width: 900px; }
+  #progtext { display: flex; justify-content: space-between; font-size: 22px; margin-bottom: 10px; }
+  #progtext b { font-family: var(--mono); }
+  #bar { display: flex; gap: 8px; height: 34px; position: relative; }
+  .seg { flex: 1; border-radius: 8px; background: #20262e; border: 1px solid var(--line); transition: background .4s; }
+  .seg.on { background: var(--bad); border-color: var(--bad); }
+  .seg.need { border-color: #4a5260; border-width: 2px; }
+
+  #side { display: flex; flex-direction: column; gap: 26px; min-height: 0; }
+  #ticker { flex: 1; min-height: 0; overflow: hidden; }
+  #txs { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  #txs li { font: 16px var(--mono); padding: 10px 12px; border-radius: 10px; background: #0f1317; border-left: 4px solid var(--line); }
+  #txs li.new { animation: slide .5s ease-out; }
+  #txs li.HB { border-left-color: var(--ok); }
+  #txs li.SH { border-left-color: var(--bad); }
+  #txs li.CX { border-left-color: var(--dim); }
+  #txs .k { font-weight: 700; }
+  #txs .m { color: var(--dim); font-size: 14px; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @keyframes slide { from { transform: translateX(30px); opacity: 0; } }
+
+  #cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; border-top: 6px solid var(--ok); }
+  .card.released { border-top-color: var(--bad); background: #1d1214; }
+  .card.cancelled { border-top-color: var(--dim); opacity: .7; }
+  .card .wid { font: 700 28px var(--mono); display: flex; justify-content: space-between; align-items: center; }
+  .pill { font: 700 14px var(--mono); padding: 4px 10px; border-radius: 999px; background: rgba(61,220,132,.15); color: var(--ok); letter-spacing: 1px; }
+  .released .pill { background: rgba(255,77,79,.18); color: var(--bad); }
+  .cancelled .pill { background: #232830; color: var(--dim); }
+  .card .row { display: flex; justify-content: space-between; font-size: 18px; margin-top: 10px; color: var(--dim); }
+  .card .row b { color: var(--text); font-family: var(--mono); font-weight: 600; }
+  .card .tx { font: 15px var(--mono); margin-top: 10px; word-break: break-all; }
+  .card .log { font: 13px var(--mono); color: var(--dim); margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  #reveal { display: none; border: 2px solid var(--bad); background: #160c0d; }
+  #reveal.show { display: block; animation: slide .6s ease-out; }
+  #reveal h2 { margin: 0 0 6px; font-size: 30px; color: var(--bad); letter-spacing: 1px; }
+  #reveal .meta { font: 16px var(--mono); color: var(--dim); margin-bottom: 14px; }
+  #plain { font: 26px/1.45 var(--mono); white-space: pre-wrap; word-break: break-word; max-height: 46vh; overflow: auto; background: #0b0607; padding: 20px 24px; border-radius: 12px; color: #fff; }
+  .empty { color: var(--dim); font-size: 20px; padding: 10px 0; }
+  #err { position: fixed; bottom: 12px; right: 16px; font: 14px var(--mono); color: var(--warn); }
+  @media (max-width: 1200px) { main { grid-template-columns: 1fr; } }
+  body.revealed #count { font-size: min(110px, 9vw); margin: 8px 0 4px; }
+  body.revealed #hero { padding: 14px; }
+  body.revealed #prog { margin-top: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">z<span>pulse</span></div>
+  <div class="tag">a dead man's switch on Zcash</div>
+  <div class="badge" id="backend">offline</div>
+  <div class="spacer"></div>
+  <div class="clock" id="clock"></div>
+</header>
+
+<section class="panel" id="reveal">
+  <h2>DOSSIER RECONSTRUCTED FROM PUBLIC CHAIN DATA</h2>
+  <div class="meta" id="revmeta"></div>
+  <div id="plain"></div>
+</section>
+
+<main>
+  <section class="panel" id="hero">
+    <div class="beat" id="beat"></div>
+    <div class="label" id="herolabel">next heartbeat deadline</div>
+    <div id="vaultname">no vault yet</div>
+    <div id="vaultmeta"></div>
+    <div id="count" class="idle">--:--</div>
+    <div id="sub">waiting for <b>principal init</b></div>
+    <div id="prog">
+      <div id="progtext"><span>shares released to the world</span><b id="progn">0 / 0</b></div>
+      <div id="bar"></div>
+    </div>
+  </section>
+  <aside id="side">
+    <section class="panel" id="ticker">
+      <div class="label">chain <span id="chainname"></span></div>
+      <ul id="txs"><li class="empty" style="border:0;background:none">no transactions yet</li></ul>
+    </section>
+  </aside>
+</main>
+
+
+<section>
+  <div class="label" style="margin-bottom:12px">watchers <span id="wcount"></span></div>
+  <div id="cards"><div class="empty">no watchers enrolled yet</div></div>
+</section>
+<div id="err"></div>
+
+<script>
+const EXPLORER = "https://testnet.cipherscan.app/tx/";
+let S = null, skew = 0, lastSeq = null, lastTxKey = "";
+const seenTx = new Set();
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const now = () => Math.floor(Date.now() / 1000) + skew;
+const short = (t, n = 10) => !t ? "" : t.length > 2 * n ? t.slice(0, n) + "…" + t.slice(-6) : t;
+function ago(ts) {
+  if (!ts) return "never";
+  const d = Math.max(0, now() - ts);
+  if (d < 60) return d + "s ago";
+  if (d < 3600) return Math.floor(d / 60) + "m " + (d % 60) + "s ago";
+  return Math.floor(d / 3600) + "h " + Math.floor(d % 3600 / 60) + "m ago";
+}
+function mmss(s) {
+  s = Math.max(0, Math.floor(s));
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+  const p = n => String(n).padStart(2, "0");
+  return h ? h + ":" + p(m) + ":" + p(x) : p(m) + ":" + p(x);
+}
+function txLink(txid) {
+  if (!txid) return "";
+  const mock = !S || S.backend === "mock" || String(txid).startsWith("mock");
+  return mock ? `<span>${esc(short(txid))}</span>` : `<a href="${EXPLORER}${esc(txid)}" target="_blank">${esc(short(txid))} ↗</a>`;
+}
+function fmtTime(d) {
+  const p = n => String(n).padStart(2, "0");
+  const utc = `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())} UTC`;
+  const i = new Date(d.getTime() + 330 * 60000);
+  const ist = `${p(i.getUTCHours())}:${p(i.getUTCMinutes())}:${p(i.getUTCSeconds())} IST`;
+  return utc + " · " + ist;
+}
+
+// pick the vault to show: newest manifest, else whatever the watchers watch
+function focus() {
+  const vs = (S.vaults || []).slice().sort((a, b) => (b.created_ts || 0) - (a.created_ts || 0));
+  const v = vs[0] || null;
+  let vid = v ? v.vault_id : null;
+  if (!vid && S.watchers && S.watchers.length) vid = S.watchers[S.watchers.length - 1].vault_id;
+  const ws = (S.watchers || []).filter(w => w.vault_id === vid);
+  const rev = (S.revealed || []).find(r => r.vault_id === vid) || null;
+  return { v, vid, ws, rev };
+}
+
+function memoKind(memo) {
+  const p = String(memo || "").split(" ");
+  if (p[0] !== "ZP1") return { k: "TX", txt: memo ? "memo" : "no memo" };
+  if (p[1] === "HB") return { k: "HB", txt: `HEARTBEAT seq ${p[3]}` };
+  if (p[1] === "CX") return { k: "CX", txt: "CANCEL" };
+  if (p[1] === "SH") return { k: "SH", txt: `SHARE from ${p[3]}` };
+  return { k: "TX", txt: p[1] };
+}
+
+function renderTicker() {
+  let items = [];
+  if (S.backend === "mock" && S.mock_ledger_tail.length) {
+    $("chainname").textContent = "· mock ledger";
+    items = S.mock_ledger_tail.slice().reverse().slice(0, 9).map(tx => {
+      const outs = tx.outputs || [];
+      const mk = memoKind((outs.find(o => o.memo) || {}).memo);
+      const total = outs.reduce((a, o) => a + (o.amount_zat || 0), 0);
+      return { key: tx.txid, cls: mk.k, html:
+        `<div><span class="k">#${esc(tx.height)} ${esc(mk.txt)}</span> · ${outs.length} out · ${total.toLocaleString()} zat</div>
+         <div class="m">${esc(short(tx.txid, 8))} · ${esc(tx.from || "")} · ${ago(tx.time)}</div>` };
+    });
+  } else if (S.known_txids && S.known_txids.length) {
+    $("chainname").textContent = "· zcash testnet";
+    items = S.known_txids.slice().reverse().slice(0, 9).map(t => ({ key: t.txid,
+      cls: t.label.startsWith("SH") ? "SH" : "TX",
+      html: `<div><span class="k">${esc(t.label)}</span></div><div class="m">${txLink(t.txid)} · ${ago(t.time)}</div>` }));
+  } else {
+    $("chainname").textContent = S.backend === "testnet" ? "· zcash testnet" : "";
+  }
+  const key = items.map(i => i.key).join(",") + "|" + Math.floor(now() / 5);
+  if (key === lastTxKey) return;
+  lastTxKey = key;
+  const first = seenTx.size === 0;
+  $("txs").innerHTML = items.length ? items.map(i => { const nw = !first && !seenTx.has(i.key); seenTx.add(i.key);
+      return `<li class="${i.cls}${nw ? " new" : ""}">${i.html}</li>`; }).join("")
+    : `<li class="empty" style="border:0;background:none">no transactions yet</li>`;
+}
+
+function renderCards(f) {
+  $("wcount").textContent = f.ws.length ? `· ${f.ws.length}` : "";
+  const enrolled = f.v ? Object.keys(f.v.watchers || {}).concat(f.v.enrolled || []) : [];
+  const ids = new Set(f.ws.map(w => w.watcher_id));
+  const pending = [...new Set(enrolled)].filter(id => !ids.has(id));
+  if (!f.ws.length && !pending.length) { $("cards").innerHTML = `<div class="empty">no watchers enrolled yet</div>`; return; }
+  const cards = f.ws.slice().sort((a, b) => String(a.watcher_id).localeCompare(b.watcher_id)).map(w => {
+    const st = w.status || "armed";
+    const last = (w.log || []).slice(-1)[0] || "";
+    return `<div class="card ${esc(st)}">
+      <div class="wid">${esc(w.watcher_id)} <span class="pill">${esc(st.toUpperCase())}</span></div>
+      <div class="row">last heartbeat <b>${ago(w.last_hb_ts)}</b></div>
+      <div class="row">heartbeats seen <b>${esc(w.hb_count ?? 0)}${w.last_kind === "duress" ? " · DURESS" : ""}</b></div>
+      <div class="row">deadline <b>${st === "armed" && w.deadline_ts ? mmss(w.deadline_ts - now()) : "—"}</b></div>
+      ${w.release_txid ? `<div class="tx">share tx ${txLink(w.release_txid)}</div>` : ""}
+      ${last ? `<div class="log">${esc(last)}</div>` : ""}
+    </div>`;
+  });
+  pending.forEach(id => cards.push(`<div class="card cancelled"><div class="wid">${esc(id)} <span class="pill">ENROLLED</span></div>
+    <div class="row">waiting for watcher to start</div></div>`));
+  $("cards").innerHTML = cards.join("");
+}
+
+function render() {
+  if (!S) return;
+  $("clock").textContent = fmtTime(new Date(now() * 1000));
+  const f = focus();
+  const v = f.v;
+  $("backend").textContent = S.backend;
+  $("backend").className = "badge " + S.backend;
+  $("vaultname").textContent = v ? (v.name || v.dir_name) : (f.vid ? "vault " + f.vid : "no vault yet");
+  $("vaultmeta").textContent = v ? `vault ${v.vault_id} · ${v.threshold}-of-${v.n || Object.keys(v.watchers || {}).length} · every ${mmss(v.interval_s)} + ${v.grace_s}s grace · seq ${v.seq ?? 0}` : "";
+
+  // heartbeat flash on new seq
+  const seq = v ? v.seq : null;
+  if (seq != null && lastSeq != null && seq !== lastSeq) {
+    const b = $("beat"); const duress = f.ws.some(w => w.last_kind === "duress");
+    b.className = "beat" + (duress ? " duress" : ""); void b.offsetWidth; b.className += " go";
+  }
+  lastSeq = seq;
+
+  const c = $("count"), sub = $("sub");
+  const released = f.ws.filter(w => w.status === "released");
+  const seenN = f.rev ? (Array.isArray(f.rev.shares_seen) ? f.rev.shares_seen.length : (f.rev.shares_seen || 0)) : 0;
+  const relN = Math.max(released.length, seenN);
+  const armed = f.ws.filter(w => w.status === "armed" && w.deadline_ts);
+  const t = v ? v.threshold : 0;
+  const n = v ? (v.n || Object.keys(v.watchers || {}).length || f.ws.length) : f.ws.length;
+  if (f.rev || (t && relN >= t)) {
+    c.className = "released"; c.textContent = "RELEASED"; $("herolabel").textContent = "switch fired";
+    const duress = f.ws.some(w => w.last_kind === "duress");
+    sub.innerHTML = duress ? "<b>duress heartbeat</b> — watchers released immediately"
+      : f.rev ? "heartbeats stopped — dossier is now <b>public</b>" : `<b>${relN}</b> shares on-chain — anyone can reconstruct`;
+  } else if (armed.length) {
+    const d = Math.min(...armed.map(w => w.deadline_ts)) - now();
+    c.className = d < 30 ? "bad" : d < 60 ? "warn" : ""; c.textContent = mmss(d);
+    $("herolabel").textContent = "release in";
+    const lh = Math.max(...f.ws.map(w => w.last_hb_ts || 0));
+    sub.innerHTML = d <= 0 ? "<b>deadline passed</b> — watchers releasing shares…" : lh ? `last heartbeat <b>${ago(lh)}</b>` : "armed · waiting for first heartbeat";
+  } else if (f.ws.length && f.ws.every(w => w.status === "cancelled")) {
+    c.className = "cancelled"; c.textContent = "CANCELLED"; $("herolabel").textContent = "vault";
+    sub.innerHTML = "principal cancelled — watchers shredded their shares";
+  } else {
+    c.className = "idle"; c.textContent = "--:--"; $("herolabel").textContent = "next heartbeat deadline";
+    sub.innerHTML = !v ? "waiting for <b>principal init</b>" : !v.sealed ? `enrolled <b>${(v.enrolled || []).length}</b> watchers · waiting for <b>seal</b>` : "sealed · waiting for <b>watchers</b>";
+  }
+
+  // t-of-n bar
+  $("progn").textContent = `${relN} / ${t || "?"} needed (n=${n})`;
+  let segs = "";
+  for (let i = 0; i < n; i++) segs += `<div class="seg ${i < relN ? "on" : ""} ${i < t ? "need" : ""}"></div>`;
+  $("bar").innerHTML = segs;
+
+  renderCards(f);
+  renderTicker();
+
+  // revealed plaintext
+  const r = f.rev || null;  // only the displayed vault's reveal, never another vault's
+  if (r) {
+    $("reveal").classList.add("show"); document.body.classList.add("revealed");
+    const seen = Array.isArray(r.shares_seen) ? r.shares_seen.length : (r.shares_seen ?? "?");
+    const txs = Array.isArray(r.txids) ? r.txids : Object.values(r.txids || {});
+    $("revmeta").innerHTML = `vault ${esc(r.vault_id)} · ${esc(seen)} shares · revealed ${ago(r.revealed_ts)} · ` +
+      txs.map(txLink).join(" ");
+    if ($("plain").textContent !== r.text) $("plain").textContent = r.text;
+  } else { $("reveal").classList.remove("show"); document.body.classList.remove("revealed"); }
+}
+
+async function poll() {
+  try {
+    const res = await fetch("/state", { cache: "no-store" });
+    const j = await res.json();
+    if (j.error) throw new Error(j.error);
+    S = j; skew = j.now - Math.floor(Date.now() / 1000); $("err").textContent = "";
+  } catch (e) { $("err").textContent = "state: " + e.message; }
+  render();
+}
+poll(); setInterval(poll, 2000); setInterval(render, 250);
+</script>
+</body>
+</html>
