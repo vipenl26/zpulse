@@ -1,6 +1,6 @@
 # Slides
 
-The 15-slide pitch deck, as published to the Claude Slides artifact
+The 14-slide pitch deck, as published to the Claude Slides artifact
 https://claude.ai/artifact/3oFk3UmeXwHXw3pj7XpVBL (private; share from its Share menu).
 
 - `deck.json`: order, sections, fonts (Share Tech Mono + IBM Plex Mono).
