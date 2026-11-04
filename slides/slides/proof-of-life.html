@@ -1,0 +1,17 @@
+<section id="proof-of-life" data-transition="fade" style="background:#070b09;color:#e4efe6;font-family:'IBM Plex Mono', 'Courier New', monospace;padding:128px;display:flex;flex-direction:column;gap:56px">
+<p style="font-size:24px;color:#5ef08a;letter-spacing:4px;text-transform:uppercase">First principles · 2</p>
+<h2 style="font-family:'Share Tech Mono', 'Courier New', monospace;font-size:72px;font-weight:400;line-height:1.1;color:#e4efe6">Proof of life must be unforgeable, and cheap.</h2>
+<div style="display:flex;gap:48px;align-items:stretch">
+<div style="flex:1;display:flex;flex-direction:column;gap:24px;background:#0b1310;padding:48px;border:1px solid #1d2b23">
+<p style="font-size:24px;color:#8fa596;letter-spacing:3px;text-transform:uppercase">Every 48 hours, one shielded Zcash transaction</p>
+<p style="font-family:'Share Tech Mono', 'Courier New', monospace;font-size:44px;line-height:1.3;color:#5ef08a">ZP1 HB vault seq ts sig</p>
+<p style="font-size:30px;line-height:1.4;color:#bfd8c8">Five outputs, one per watcher, a few thousand zatoshi each, the same signed memo in all of them.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:28px">
+<p style="font-size:32px;line-height:1.4;color:#bfd8c8"><b>Unforgeable:</b> Ed25519 signature over the sequence number. A captor sending coins to the address proves nothing.</p>
+<p style="font-size:32px;line-height:1.4;color:#bfd8c8"><b>Cheap:</b> about 0.001 ZEC per heartbeat.</p>
+<p style="font-size:32px;line-height:1.4;color:#bfd8c8"><b>Useful:</b> the payment funds the watcher’s own release transaction later.</p>
+</div>
+</div>
+<aside>The heartbeat is a payment. That's the trick we borrowed from Paid Private File: a viewing key is a smart escrow. Each watcher gets a diversified address made for this vault, so a payment matches exactly one vault, and the watcher reads it with its own wallet. The coins that arrive are what the watcher later spends to post its share.</aside>
+</section>

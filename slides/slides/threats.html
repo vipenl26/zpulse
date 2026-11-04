@@ -1,0 +1,28 @@
+<section id="threats" data-transition="fade" style="background:#0b1310;color:#e4efe6;font-family:'IBM Plex Mono', 'Courier New', monospace;padding:128px;display:flex;flex-direction:column;gap:48px">
+<p style="font-size:24px;color:#5ef08a;letter-spacing:4px;text-transform:uppercase">Threat model, honestly</p>
+<h2 style="font-family:'Share Tech Mono', 'Courier New', monospace;font-size:72px;font-weight:400;line-height:1.1;color:#e4efe6">What holds, and what does not yet.</h2>
+<div style="display:flex;gap:48px">
+<div style="flex:1;display:flex;flex-direction:column;gap:20px">
+<p style="font-size:24px;color:#5ef08a;letter-spacing:3px;text-transform:uppercase">Holds</p>
+<ul style="font-size:28px;line-height:1.5;color:#bfd8c8">
+<li>Seize two of five watchers: the switch still fires.</li>
+<li>Two watchers collude: not one bit leaks.</li>
+<li>Seize the server: there is none.</li>
+<li>Force a check-in: duress releases instead.</li>
+<li>Replay an old heartbeat: sequence numbers reject it.</li>
+<li>A watcher goes offline: it catches up from the chain.</li>
+</ul>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:20px">
+<p style="font-size:24px;color:#ffb000;letter-spacing:3px;text-transform:uppercase">Does not yet</p>
+<ul style="font-size:28px;line-height:1.5;color:#bfd8c8">
+<li>Three watchers collude: early release. Choose them from different jurisdictions.</li>
+<li>The principal’s signing key is seized: heartbeats can be forged.</li>
+<li>Heartbeat timing is visible to a watcher, though amounts and memos are not.</li>
+<li>Cancel cannot recall a share already posted.</li>
+<li>Testnet prototype, not audited.</li>
+</ul>
+</div>
+</div>
+<aside>Judges respect a threat model more than a feature list. The seized-key case is the real open problem; a hardware key or a second co-signer for cancel is the obvious next step.</aside>
+</section>

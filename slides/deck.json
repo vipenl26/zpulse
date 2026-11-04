@@ -1,0 +1,19 @@
+{
+  "v": 4,
+  "createdOnFiles": {"v": 1, "at": "2026-11-04T14:05:00Z"},
+  "lists": "css",
+  "title": "zpulse",
+  "order": ["cover", "person", "today", "split", "proof-of-life", "no-server", "stops", "duress", "why-zcash", "testnet", "threats", "built", "close"],
+  "sections": {
+    "s1": {"description": "Why a dead man’s switch exists and why the usual ones fail.", "start": "cover"},
+    "s2": {"description": "Three first principles: split the secret, prove life cheaply, trust no server.", "start": "split"},
+    "s3": {"description": "What happens when the pulse stops, and the duress heartbeat.", "start": "stops"},
+    "s4": {"description": "Why Zcash, what ran on testnet, and the honest threat model.", "start": "why-zcash"},
+    "s5": {"description": "What we built in a day and the close.", "start": "built"}
+  },
+  "faces": {
+    "share-tech-mono": {"family": "Share Tech Mono", "href": "https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap"},
+    "ibm-plex-mono": {"family": "IBM Plex Mono", "href": "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap"}
+  },
+  "designSystems": []
+}

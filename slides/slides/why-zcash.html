@@ -1,0 +1,20 @@
+<section id="why-zcash" data-transition="fade" style="background:#0b1310;color:#e4efe6;font-family:'IBM Plex Mono', 'Courier New', monospace;padding:128px;display:flex;flex-direction:column;gap:56px">
+<p style="font-size:24px;color:#5ef08a;letter-spacing:4px;text-transform:uppercase">Why Zcash</p>
+<h2 style="font-family:'Share Tech Mono', 'Courier New', monospace;font-size:72px;font-weight:400;line-height:1.1;color:#e4efe6">Shielded memos are the only transport.</h2>
+<div style="display:flex;gap:32px">
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;border-top:2px solid #5ef08a;padding:24px 0 0 0">
+<h3 style="font-size:34px;font-weight:500;line-height:1.2;color:#e4efe6">512 bytes, encrypted, on-chain</h3>
+<p style="font-size:26px;line-height:1.4;color:#8fa596">A signed heartbeat or a Shamir share fits in one memo. Sender, amount and memo are hidden from everyone but the holder of the viewing key.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;border-top:2px solid #5ef08a;padding:24px 0 0 0">
+<h3 style="font-size:34px;font-weight:500;line-height:1.2;color:#e4efe6">Viewing key as smart escrow</h3>
+<p style="font-size:26px;line-height:1.4;color:#8fa596">No contract decides a payment happened. A light client with the right key sees it. Borrowed from Paid Private File.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;border-top:2px solid #5ef08a;padding:24px 0 0 0">
+<h3 style="font-size:34px;font-weight:500;line-height:1.2;color:#e4efe6">Diversified addresses</h3>
+<p style="font-size:26px;line-height:1.4;color:#8fa596">One fresh address per vault per watcher, so a payment maps to exactly one vault. Nothing links the five watchers.</p>
+</div>
+</div>
+<p style="font-size:30px;line-height:1.4;color:#bfd8c8">No smart contract, no server, no relay. Threshold keepers and memos-as-transport come from z-canary; we removed the recipient and made the heartbeat pay.</p>
+<aside>Credit where due: Paid Private File for the viewing-key escrow and per-order diversified addresses, z-canary for threshold keepers on memos. Our additions: release to the world, heartbeats that fund the release, duress, and no peer network at all.</aside>
+</section>
