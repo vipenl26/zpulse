@@ -888,3 +888,32 @@ No flags. Deletes and recreates `./data`. Runs the full mock flow and the duress
 | watcher run | 0 | Stopped with Ctrl-C (prints the state summary). Killed with a signal: no summary, but state is saved after every poll. |
 | zwallet.py | 0 / 2 | Success / usage or unknown command. A devtool failure raises an exception (exit 1). |
 | mock_demo.sh | 0 / 1 | PASS / FAIL. |
+
+## 11. Web apps
+
+### 11.1 Watcher app (for the people holding shares)
+
+```bash
+python3 watcherapp/serve.py --id w1 --backend mock --data ./data --port 8791
+```
+
+Open http://127.0.0.1:8791/. The page has three steps:
+
+1. **Enroll.** Paste the `vault.json` the principal sent you and press Enroll. The app creates your identity (if new), derives a fresh address in your own wallet, and shows an enroll JSON. Copy it and send it back to the principal. Nothing secret leaves your machine.
+2. **Load packet.** After the principal seals the vault, paste the packet JSON they send you. The app checks it is really addressed to you (watcher id, vault id and your verify key must match) and stores it with mode 0600.
+3. **Run.** Press Start. The app launches `python3 -m zpulse.watcher run` as a background daemon and shows its state every 2 seconds: ARMED / RELEASED / CANCELLED, countdown to the deadline (amber under 60 s, red when passed), heartbeats seen, last sequence number, release txid (linked to the explorer on testnet) and the last log lines. "Check once" runs a single poll. Stop asks for an inline confirmation.
+
+The daemon keeps running if you close the page or stop the server; the next server start picks it up again. All POST requests need the `X-Zpulse: 1` header and a localhost Host, so another website cannot drive the app from your browser. The app never sends your secret key, your sealed share, or any `*.key` file over HTTP.
+
+On testnet (`--backend testnet`) the identity panel also shows your wallet address and shielded balance. Enrolling creates the wallet on first use, which takes a few seconds.
+
+### 11.2 Network monitor (what is happening on Zcash)
+
+```bash
+python3 -m pip install grpcio protobuf
+python3 netviz/serve.py --port 8792 --data ./data [--server testnet.zec.rocks:443] [--blocks 40] [--txids FILE]
+```
+
+Open http://127.0.0.1:8792/. The server polls lightwalletd every 5 s over gRPC (read-only calls: GetLightdInfo, GetLatestBlock, GetBlockRange, GetTransaction, GetMempoolTx) and the page polls the server every 3 s. You see the tip height, seconds since the last block, the average block interval, a stream of the last 40 blocks with stacked bars for Ironwood / Orchard / Sapling / transparent activity, the mempool, and a "zpulse transactions" list: every heartbeat and release txid found in `data/` (and any you add via the input or `--txids`), with its block and a confirmation counter. Block times are shown in UTC and IST.
+
+If the page says "connecting to lightwalletd", the server could not reach `testnet.zec.rocks:443`; the last good snapshot stays on screen. On macOS the server sets `GRPC_DNS_RESOLVER=native` for you because gRPC's own resolver fails there.

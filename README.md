@@ -62,6 +62,8 @@ There is no recipient. **The release goes to the world.** No smart contract, no 
 - `site/index.html`: the landing page (what it is, how it works, quotes, full instructions, testnet evidence).
 - `site/viz.html`: an animated visualizer with four scenarios: heartbeat reaches every watcher; two watchers down, nothing lost; pulse stops, 5 of 5 release; pulse stops, only 3 of 5 are up.
 - `INSTRUCTIONS.md`: the complete user manual, every command and flag, derived from the code.
+- `watcherapp/`: a local web app for watchers. Enroll by pasting the principal's `vault.json`, load the sealed packet, start or stop the watcher daemon, and watch the countdown, heartbeats and release status live. `python3 watcherapp/serve.py --id w1 --backend testnet` then open http://127.0.0.1:8791/.
+- `netviz/`: a live view of the Zcash testnet read straight from lightwalletd over gRPC: block stream with per-pool shielded activity, mempool, and zpulse's own heartbeat and release transactions with confirmations ticking up. Needs `pip install grpcio protobuf`. `python3 netviz/serve.py` then open http://127.0.0.1:8792/.
 
 Serve them locally with `python3 -m http.server 8790 --directory site` and open http://localhost:8790/.
 

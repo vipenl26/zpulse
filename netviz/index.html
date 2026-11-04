@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>zpulse netviz</title>
+<meta name="description" content="Live view of the Zcash testnet via lightwalletd: blocks, shielded activity, mempool and zpulse transactions.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: dark;
+  --bg:#070a08;
+  --bg-2:#0a0f0b;
+  --panel:#0d140f;
+  --line:#1c2a20;
+  --line-2:#26392b;
+  --ink:#4dff8f;
+  --ink-strong:#8dffb6;
+  --ink-dim:#2fbf68;
+  --glow:rgba(77,255,143,.35);
+  --text:#c9dccd;
+  --muted:#7f9686;
+  --faint:#4d6153;
+  --amber:#ffb547;
+  --amber-dim:#c98a2a;
+  --amber-glow:rgba(255,181,71,.35);
+  --red:#ff6b5a;
+  --sel:rgba(77,255,143,.25);
+  /* pool colors (stacked bars) */
+  --p-ironwood:#4dff8f;
+  --p-orchard:#2a9d5c;
+  --p-sapling:#6fb7a6;
+  --p-transparent:#3d4d42;
+  --font-display:"Share Tech Mono","Courier New",ui-monospace,monospace;
+  --font-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-mono);font-size:14px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;min-height:100vh;font-variant-numeric:tabular-nums}
+::selection{background:var(--sel);color:var(--ink-strong)}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:50;
+  background:repeating-linear-gradient(to bottom,rgba(0,0,0,0) 0,rgba(0,0,0,0) 2px,rgba(0,0,0,.16) 3px,rgba(0,0,0,0) 4px);
+  mix-blend-mode:multiply;opacity:.5}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:49;
+  background:radial-gradient(ellipse at 50% 0%,rgba(77,255,143,.05),rgba(0,0,0,0) 60%)}
+a{color:var(--ink)}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.wrap{max-width:1280px;margin:0 auto;padding-block:20px 40px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px))}
+h1,h2{font-family:var(--font-display);font-weight:400;margin:0;color:var(--ink);letter-spacing:.02em}
+.mono{font-family:var(--font-mono)}
+.muted{color:var(--muted)} .faint{color:var(--faint)} .amber{color:var(--amber)}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;
+  padding-bottom:14px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.brand h1{font-size:2rem;line-height:1;text-shadow:0 0 16px var(--glow)}
+.brand h1 span{color:var(--faint)}
+.chain{font-size:.75rem;letter-spacing:.18em;text-transform:uppercase;border:1px solid var(--line-2);padding:2px 8px;color:var(--ink-dim)}
+.status{display:inline-flex;align-items:center;gap:8px;font-size:.78rem;letter-spacing:.14em;text-transform:uppercase}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--faint)}
+.status[data-s="live"] .dot{background:var(--ink);box-shadow:0 0 10px var(--glow);animation:blink 2s steps(2) infinite}
+.status[data-s="live"]{color:var(--ink)}
+.status[data-s="connecting"]{color:var(--muted)}
+.status[data-s="connecting"] .dot{background:var(--muted);animation:blink 1s steps(2) infinite}
+.status[data-s="stale"],.status[data-s="down"]{color:var(--amber)}
+.status[data-s="stale"] .dot,.status[data-s="down"] .dot{background:var(--amber);box-shadow:0 0 10px var(--amber-glow)}
+@keyframes blink{50%{opacity:.35}}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);
+  border:1px solid var(--line);margin-top:16px}
+.stat{background:var(--bg-2);padding:10px 12px;min-width:0}
+.stat .k{font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.stat .v{font-family:var(--font-display);font-size:1.7rem;line-height:1.15;color:var(--ink-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat .v small{font-size:.9rem;color:var(--muted)}
+.stat .s{font-size:.72rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat.tip .v{color:var(--ink);text-shadow:0 0 14px var(--glow)}
+.stat .v.bump{animation:bump .9s ease-out}
+@keyframes bump{0%{color:var(--amber);text-shadow:0 0 18px var(--amber-glow)}100%{}}
+.since.late{color:var(--amber)}
+
+/* banner */
+.banner{margin-top:14px;border:1px solid var(--amber-dim);background:rgba(255,181,71,.06);color:var(--amber);
+  padding:10px 12px;font-size:.82rem;display:none;overflow-wrap:anywhere}
+.banner.on{display:block}
+.banner b{font-weight:600}
+
+/* panels */
+.panel{border:1px solid var(--line);background:var(--panel);margin-top:18px;min-width:0}
+.ph{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid var(--line)}
+.ph h2{font-size:1.3rem}
+.ph .meta{font-size:.74rem;color:var(--muted)}
+.pb{padding:12px}
+
+/* block stream */
+.stream{overflow-x:auto;overflow-y:hidden;scrollbar-color:var(--line-2) transparent;padding:14px 12px 10px}
+.stream:focus-visible{outline-offset:-2px}
+.lane{display:flex;align-items:flex-end;gap:6px;min-height:190px;width:max-content}
+.blk{position:relative;flex:0 0 auto;display:flex;flex-direction:column;justify-content:flex-end;
+  border:1px solid var(--line-2);background:var(--bg-2);padding:6px 6px 5px;transition:width .4s}
+.blk .bars{display:flex;flex-direction:column-reverse;width:100%;height:110px;gap:1px;margin-bottom:6px}
+.blk .bars i{display:block;width:100%;min-height:0}
+.blk .bars .ironwood{background:var(--p-ironwood);box-shadow:0 0 8px rgba(77,255,143,.25)}
+.blk .bars .orchard{background:var(--p-orchard)}
+.blk .bars .sapling{background:var(--p-sapling)}
+.blk .bars .transparent{background:var(--p-transparent)}
+.blk .h{font-size:.72rem;color:var(--ink-strong);white-space:nowrap}
+.blk .n{font-family:var(--font-display);font-size:1.15rem;line-height:1;color:var(--ink)}
+.blk .n small{font-size:.7rem;color:var(--muted);font-family:var(--font-mono)}
+.blk .age{font-size:.68rem;color:var(--faint);white-space:nowrap}
+.blk.empty .n{color:var(--faint)}
+.blk.tip{border-color:var(--ink-dim);box-shadow:0 0 0 1px rgba(77,255,143,.15),0 0 18px rgba(77,255,143,.12)}
+.blk.ours{border-color:var(--amber);box-shadow:0 0 14px var(--amber-glow)}
+.blk .zp{position:absolute;top:-1px;right:-1px;background:var(--amber);color:#1a1205;font-size:.6rem;font-weight:600;
+  letter-spacing:.08em;padding:0 4px}
+.blk.enter{animation:enter .7s cubic-bezier(.2,.8,.2,1)}
+@keyframes enter{0%{opacity:0;transform:translateX(40px) scale(.9);border-color:var(--ink);box-shadow:0 0 28px var(--glow)}100%{opacity:1;transform:none}}
+.blk.ghost{border-style:dashed;border-color:var(--line-2);width:58px}
+.blk.ghost .bars{background:repeating-linear-gradient(to top,var(--line) 0 2px,transparent 2px 8px);animation:blink 1.4s steps(2) infinite}
+
+.spark{padding:4px 12px 12px}
+.spark svg{display:block;width:100%;height:64px}
+.spark .cap{display:flex;justify-content:space-between;gap:8px;font-size:.7rem;color:var(--faint);flex-wrap:wrap}
+
+/* legend */
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.74rem;color:var(--muted);padding:10px 12px;border-top:1px solid var(--line)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;display:inline-block;border:1px solid rgba(0,0,0,.4)}
+.sw.ironwood{background:var(--p-ironwood)} .sw.orchard{background:var(--p-orchard)}
+.sw.sapling{background:var(--p-sapling)} .sw.transparent{background:var(--p-transparent)}
+.sw.ours{background:transparent;border:2px solid var(--amber)}
+
+/* two columns */
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:18px}
+.cols>.panel{margin-top:18px}
+@media (max-width:860px){.cols{grid-template-columns:minmax(0,1fr);gap:0}}
+
+/* mempool */
+.count{font-family:var(--font-display);font-size:1.6rem;color:var(--ink);line-height:1}
+.count.pulse{animation:pulse 1s ease-out}
+@keyframes pulse{0%{color:var(--amber);text-shadow:0 0 20px var(--amber-glow);transform:scale(1.15)}100%{transform:none}}
+.list{list-style:none;margin:0;padding:0}
+.list li{display:flex;align-items:center;gap:10px;padding:6px 12px;border-bottom:1px solid var(--line);font-size:.8rem;min-width:0}
+.list li:last-child{border-bottom:0}
+.tx{font-family:var(--font-mono);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+.tx b{color:var(--ink-strong);font-weight:500}
+.chip{font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--line-2);padding:0 5px;color:var(--muted);white-space:nowrap}
+.chip.ours{border-color:var(--amber);color:var(--amber)}
+.mini{display:inline-flex;gap:1px;height:10px;width:44px;flex:0 0 auto;background:var(--line)}
+.mini i{display:block;height:100%}
+.list li.new{animation:rowin .8s ease-out}
+@keyframes rowin{0%{background:rgba(77,255,143,.12)}100%{background:transparent}}
+.emptymsg{padding:16px 12px;color:var(--faint);font-size:.8rem}
+
+/* tracked */
+.trk li{display:grid;grid-template-columns:86px minmax(0,1fr) auto;gap:4px 12px;align-items:center;padding:8px 12px}
+.trk .kind{justify-self:start;font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;padding:1px 6px;border:1px solid var(--amber-dim);color:var(--amber);white-space:nowrap}
+.trk .kind.release{background:rgba(255,181,71,.12)}
+.trk .kind.other{border-color:var(--line-2);color:var(--muted)}
+.trk .body{min-width:0}
+.trk .lbl{display:block;font-size:.72rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trk .where{font-size:.72rem;color:var(--faint);white-space:nowrap}
+.conf{text-align:right;min-width:72px}
+.conf .c{font-family:var(--font-display);font-size:1.5rem;line-height:1;color:var(--ink-strong);display:inline-block}
+.conf .c.tick{animation:tick .9s ease-out}
+@keyframes tick{0%{color:var(--amber);transform:translateY(-6px);text-shadow:0 0 16px var(--amber-glow)}100%{transform:none}}
+.conf .u{display:block;white-space:nowrap;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.conf.pending .c{color:var(--amber)}
+.trk li.fresh{background:rgba(255,181,71,.05)}
+
+form.add{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line);flex-wrap:wrap}
+form.add input{flex:1 1 220px;min-width:0;background:var(--bg);color:var(--ink-strong);border:1px solid var(--line-2);
+  font:inherit;font-size:.8rem;padding:7px 9px}
+form.add input::placeholder{color:var(--faint)}
+form.add button{background:transparent;color:var(--ink);border:1px solid var(--ink-dim);font:inherit;font-size:.8rem;
+  padding:7px 14px;cursor:pointer;letter-spacing:.08em;text-transform:uppercase}
+form.add button:hover{background:rgba(77,255,143,.08)}
+.formmsg{flex-basis:100%;font-size:.72rem;color:var(--muted);min-height:1.2em}
+.formmsg.err{color:var(--amber)}
+
+footer{margin-top:22px;font-size:.72rem;color:var(--faint);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+
+@media (max-width:520px){
+  .trk li{grid-template-columns:minmax(0,1fr) auto}
+  .trk .kind{grid-column:1/-1}
+  .brand h1{font-size:1.6rem}
+  .stat .v{font-size:1.4rem}
+  .lane{min-height:170px}
+  .blk .bars{height:92px}
+  .stat.srv{grid-column:1/-1}
+}
+@media (prefers-reduced-motion: reduce){
+  body::before{display:none}
+  *,*::before,*::after{animation:none !important;transition:none !important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>zpulse <span>/</span> netviz</h1>
+      <span class="chain" id="chain">chain ...</span>
+    </div>
+    <div class="status" id="status" data-s="connecting" role="status" aria-live="polite"><span class="dot"></span><span id="statusText">connecting...</span></div>
+  </header>
+
+  <section class="stats" aria-label="chain status">
+    <div class="stat tip"><div class="k">tip height</div><div class="v" id="tip">------</div><div class="s" id="tipHash">waiting for lightwalletd</div></div>
+    <div class="stat"><div class="k">since last block</div><div class="v since" id="since">--<small>s</small></div><div class="s" id="lastTime">&nbsp;</div></div>
+    <div class="stat"><div class="k">avg block interval</div><div class="v" id="interval">--<small>s</small></div><div class="s">last 20 blocks</div></div>
+    <div class="stat"><div class="k">shielded actions</div><div class="v" id="shTotal">--</div><div class="s" id="shSub">in window</div></div>
+    <div class="stat srv"><div class="k">server</div><div class="v" style="font-size:1.05rem;padding-top:6px" id="server">--</div><div class="s" id="serverSub">&nbsp;</div></div>
+  </section>
+
+  <div class="banner" id="banner" role="alert"></div>
+
+  <section class="panel" aria-labelledby="h-stream">
+    <div class="ph"><h2 id="h-stream">block stream</h2><span class="meta" id="streamMeta">newest on the right</span></div>
+    <div class="stream" id="stream" tabindex="0" aria-label="recent blocks, scroll horizontally">
+      <div class="lane" id="lane"></div>
+    </div>
+    <div class="spark" aria-label="shielded actions per block">
+      <svg id="spark" viewBox="0 0 400 64" preserveAspectRatio="none" role="img" aria-label="sparkline of shielded actions per block"></svg>
+      <div class="cap"><span id="sparkL">&nbsp;</span><span>shielded actions per block (sapling spends + outputs + orchard + ironwood actions)</span><span id="sparkR">&nbsp;</span></div>
+    </div>
+    <div class="legend" aria-label="legend">
+      <span><i class="sw ironwood"></i>ironwood actions</span>
+      <span><i class="sw orchard"></i>orchard actions</span>
+      <span><i class="sw sapling"></i>sapling spends + outputs</span>
+      <span><i class="sw transparent"></i>transparent-only tx (incl. coinbase)</span>
+      <span><i class="sw ours"></i>contains a zpulse tx</span>
+      <span class="faint">tile width = tx count</span>
+    </div>
+  </section>
+
+  <div class="cols">
+    <section class="panel" aria-labelledby="h-mp">
+      <div class="ph"><h2 id="h-mp">mempool</h2><span class="meta"><span class="count" id="mpCount">-</span> pending</span></div>
+      <ul class="list" id="mpList"><li class="emptymsg">connecting...</li></ul>
+    </section>
+
+    <section class="panel" aria-labelledby="h-trk">
+      <div class="ph"><h2 id="h-trk">zpulse transactions</h2><span class="meta" id="trkMeta">heartbeats and share releases</span></div>
+      <ul class="list trk" id="trkList"><li class="emptymsg">connecting...</li></ul>
+      <form class="add" id="addForm" autocomplete="off">
+        <label for="addTx" class="faint" style="flex-basis:100%;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase">track a txid</label>
+        <input id="addTx" name="txid" placeholder="64 hex characters" spellcheck="false" inputmode="text" pattern="[0-9a-fA-F]{64}" aria-describedby="addMsg">
+        <button type="submit">track</button>
+        <div class="formmsg" id="addMsg" aria-live="polite"></div>
+      </form>
+    </section>
+  </div>
+
+  <footer>
+    <span>read-only: lightwalletd gRPC (GetLightdInfo, GetBlockRange, GetMempoolTx, GetTransaction). Nothing is sent.</span>
+    <span id="foot">&nbsp;</span>
+  </footer>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const POLL_MS = 3000;
+  const state = { snap: null, clockOffset: 0, lastFetchOk: 0, fetchErr: null, prevTip: null,
+                  prevMp: null, prevConf: new Map(), blockEls: new Map(), firstRender: true, tipShown: null };
+
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const nowS = () => Date.now() / 1000 + state.clockOffset;
+  const fmtAge = (s) => {
+    s = Math.max(0, Math.round(s));
+    if (s < 90) return s + "s";
+    if (s < 5400) return Math.round(s / 60) + "m";
+    if (s < 172800) return (s / 3600).toFixed(1) + "h";
+    return Math.round(s / 86400) + "d";
+  };
+  const short = (t, n = 10) => `<b>${t.slice(0, n)}</b>&hellip;${t.slice(-6)}`;
+  const shielded = (b) => b.sapling_spends + b.sapling_outputs + b.orchard_actions + (b.ironwood_actions || 0);
+  const utcIst = (ts) => {
+    const d = new Date(ts * 1000);
+    const u = d.toISOString().slice(11, 19);
+    const i = new Date(ts * 1000 + 19800000).toISOString().slice(11, 19);
+    return `${u} UTC / ${i} IST`;
+  };
+
+  // ---------- fetch loop
+  async function poll() {
+    try {
+      const r = await fetch("/api/snapshot", { cache: "no-store" });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const s = await r.json();
+      state.clockOffset = s.now - Date.now() / 1000;
+      state.snap = s; state.lastFetchOk = Date.now(); state.fetchErr = null;
+      render();
+    } catch (e) {
+      state.fetchErr = String(e.message || e);
+      renderStatus();
+    } finally {
+      setTimeout(poll, POLL_MS);
+    }
+  }
+
+  // ---------- status + banner
+  function renderStatus() {
+    const s = state.snap, st = $("status"), txt = $("statusText"), ban = $("banner");
+    let mode = "connecting", label = "connecting...", msg = "";
+    if (state.fetchErr) {
+      mode = "down"; label = "netviz server unreachable";
+      msg = `<b>Cannot reach netviz/serve.py</b> (${esc(state.fetchErr)}). ` +
+            (s && s.info ? `Showing the last snapshot from ${fmtAge((Date.now() - state.lastFetchOk) / 1000)} ago.` : "Start it with python3 netviz/serve.py.");
+    } else if (s && s.error && s.info) {
+      mode = "stale"; label = "lightwalletd error";
+      msg = `<b>lightwalletd: ${esc(s.error)}</b>. Keeping the last good snapshot` +
+            (s.last_ok ? ` from ${fmtAge(nowS() - s.last_ok)} ago.` : ".") + " Retrying every 5 s.";
+    } else if (s && s.error) {
+      mode = "connecting"; label = "connecting to lightwalletd...";
+      msg = `<b>Still trying ${esc(s.error)}</b>`;
+    } else if (s && s.info) {
+      mode = "live"; label = "live";
+    } else if (s) {
+      label = "connecting to lightwalletd...";
+    }
+    st.dataset.s = mode; txt.textContent = label;
+    ban.innerHTML = msg; ban.classList.toggle("on", !!msg);
+  }
+
+  // ---------- header numbers
+  function animateTip(to) {
+    const el = $("tip");
+    const from = state.tipShown;
+    state.tipShown = to;
+    if (from == null || to <= from || to - from > 50 || matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      el.textContent = to.toLocaleString("en-US");
+    } else {
+      let cur = from;
+      const step = () => { cur++; el.textContent = cur.toLocaleString("en-US"); if (cur < to) setTimeout(step, 120); };
+      step();
+    }
+    if (from != null && to > from) { el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); }
+  }
+
+  function renderHeader(s) {
+    const i = s.info;
+    $("chain").textContent = i.chain === "test" ? "testnet" : i.chain === "main" ? "mainnet" : i.chain;
+    animateTip(i.height);
+    $("tipHash").textContent = i.tip_hash ? i.tip_hash.slice(0, 16) + "..." : "";
+    $("interval").innerHTML = (s.block_interval_s != null ? s.block_interval_s.toFixed(1) : "--") + "<small>s</small>";
+    $("server").textContent = i.server;
+    $("server").title = i.server;
+    $("serverSub").textContent = [i.server_version, i.node, i.branch_id ? "branch " + i.branch_id : ""].filter(Boolean).join(" · ");
+    const tot = s.blocks.reduce((a, b) => a + shielded(b), 0);
+    const iw = s.blocks.reduce((a, b) => a + (b.ironwood_actions || 0), 0);
+    $("shTotal").textContent = tot.toLocaleString("en-US");
+    $("shSub").textContent = `${s.blocks.length} blocks · ${tot ? Math.round(100 * iw / tot) : 0}% ironwood`;
+    $("streamMeta").textContent = `last ${s.blocks.length} blocks · newest on the right`;
+    $("foot").textContent = `pools: ${(s.pools || []).join(", ").toLowerCase()} · protocol ${i.protocol_version || "?"}`;
+  }
+
+  function tickClock() {
+    const s = state.snap;
+    if (s && s.blocks && s.blocks.length) {
+      const last = s.blocks[s.blocks.length - 1];
+      const ago = nowS() - last.time;
+      const el = $("since");
+      el.innerHTML = Math.max(0, Math.round(ago)) + "<small>s</small>";
+      el.classList.toggle("late", s.block_interval_s ? ago > 3 * s.block_interval_s : false);
+      $("lastTime").textContent = "block at " + utcIst(last.time);
+      for (const [h, el2] of state.blockEls) {
+        const b = el2._b; if (!b) continue;
+        el2.querySelector(".age").textContent = fmtAge(nowS() - b.time) + " ago";
+      }
+    }
+    if (state.snap) renderStatus();
+  }
+
+  // ---------- block stream
+  function blockInner(b, maxAct, ours) {
+    const iw = b.ironwood_actions || 0, oa = b.orchard_actions, sa = b.sapling_spends + b.sapling_outputs, tr = b.transparent_only;
+    const sum = iw + oa + sa + tr;
+    // bar height scales with activity relative to the busiest block in the window
+    const fill = sum ? Math.max(8, Math.round(100 * Math.sqrt(sum / maxAct))) : 0;
+    const seg = (cls, n) => n ? `<i class="${cls}" style="height:${(fill * n / sum).toFixed(2)}%" title="${n} ${cls}"></i>` : "";
+    return `${ours ? '<span class="zp">ZP</span>' : ""}
+      <div class="bars">${seg("transparent", tr)}${seg("sapling", sa)}${seg("orchard", oa)}${seg("ironwood", iw)}</div>
+      <div class="n">${b.n_tx}<small> tx</small></div>
+      <div class="h">${b.height}</div>
+      <div class="age">${fmtAge(nowS() - b.time)} ago</div>`;
+  }
+
+  function renderBlocks(s) {
+    const lane = $("lane"), stream = $("stream");
+    const oursIds = new Map(s.tracked.map((t) => [t.txid, t]));
+    const maxAct = Math.max(1, ...s.blocks.map((b) => shielded(b) + b.transparent_only));
+    const maxTx = Math.max(1, ...s.blocks.map((b) => b.n_tx));
+    const atEnd = stream.scrollLeft + stream.clientWidth >= stream.scrollWidth - 40;
+    lane.querySelectorAll(".ghost").forEach((g) => g.remove());
+    const keep = new Set(s.blocks.map((b) => b.height));
+    for (const [h, el] of state.blockEls) if (!keep.has(h)) { el.remove(); state.blockEls.delete(h); }
+    const tipH = s.blocks.length ? s.blocks[s.blocks.length - 1].height : null;
+    let added = false;
+    for (const b of s.blocks) {
+      let el = state.blockEls.get(b.height);
+      const ours = b.txids.filter((t) => oursIds.has(t));
+      const w = Math.round(58 + 70 * Math.sqrt(b.n_tx / maxTx));
+      const key = b.hash + ":" + maxAct + ":" + ours.length;
+      if (!el) {
+        el = document.createElement("div");
+        el.className = "blk";
+        if (!state.firstRender) { el.classList.add("enter"); added = true; }
+        // insert in height order
+        let next = null;
+        for (const [h2, e2] of state.blockEls) if (h2 > b.height && (!next || h2 < next.h)) next = { h: h2, e: e2 };
+        lane.insertBefore(el, next ? next.e : null);
+        state.blockEls.set(b.height, el);
+      }
+      el._b = b;
+      if (el._key !== key) { el.innerHTML = blockInner(b, maxAct, ours.length); el._key = key; }
+      el.style.width = w + "px";
+      el.classList.toggle("tip", b.height === tipH);
+      el.classList.toggle("ours", ours.length > 0);
+      el.classList.toggle("empty", shielded(b) === 0);
+      const counts = `${b.n_tx} tx: ${b.ironwood_actions || 0} ironwood, ${b.orchard_actions} orchard, ` +
+        `${b.sapling_spends}+${b.sapling_outputs} sapling spends+outputs, ${b.transparent_only} transparent-only`;
+      el.title = `block ${b.height}\n${b.hash}\n${counts}\n${utcIst(b.time)}` +
+        (ours.length ? "\nzpulse: " + ours.map((t) => oursIds.get(t).label).join("; ") : "");
+      el.setAttribute("aria-label", `block ${b.height}, ${counts}${ours.length ? ", contains a zpulse transaction" : ""}`);
+    }
+    if (state.firstRender || (added && atEnd)) stream.scrollLeft = stream.scrollWidth;
+    state.firstRender = false;
+  }
+
+  function renderGhosts() {
+    const lane = $("lane");
+    if (lane.children.length) return;
+    for (let i = 0; i < 14; i++) {
+      const g = document.createElement("div");
+      g.className = "blk ghost";
+      g.innerHTML = `<div class="bars"></div><div class="n">--</div><div class="h faint">------</div><div class="age">&nbsp;</div>`;
+      lane.appendChild(g);
+    }
+  }
+
+  function renderSpark(s) {
+    const svg = $("spark");
+    const vals = s.blocks.map(shielded);
+    if (!vals.length) { svg.innerHTML = ""; return; }
+    const W = 400, H = 64, pad = 4, max = Math.max(1, ...vals), n = vals.length;
+    const x = (i) => n === 1 ? W / 2 : pad + (W - 2 * pad) * i / (n - 1);
+    const y = (v) => H - pad - (H - 2 * pad) * v / max;
+    const pts = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+    const ours = new Set(s.tracked.filter((t) => t.height).map((t) => t.height));
+    const marks = s.blocks.map((b, i) => ours.has(b.height) ? `<circle cx="${x(i)}" cy="${y(vals[i])}" r="3" fill="var(--amber)"/>` : "").join("");
+    svg.innerHTML =
+      `<line x1="0" x2="${W}" y1="${H - pad}" y2="${H - pad}" stroke="var(--line-2)" stroke-width="1" vector-effect="non-scaling-stroke"/>` +
+      `<polygon points="${x(0)},${H - pad} ${pts} ${x(n - 1)},${H - pad}" fill="rgba(77,255,143,.10)"/>` +
+      `<polyline points="${pts}" fill="none" stroke="var(--ink)" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>` +
+      `<circle cx="${x(n - 1)}" cy="${y(vals[n - 1])}" r="3" fill="var(--ink-strong)"/>` + marks;
+    $("sparkL").textContent = `#${s.blocks[0].height}`;
+    $("sparkR").textContent = `#${s.blocks[n - 1].height} · max ${max}`;
+  }
+
+  // ---------- mempool
+  function mini(m) {
+    const parts = [["ironwood", m.ironwood], ["orchard", m.orchard], ["sapling", m.sapling], ["transparent", (m.t_in + m.t_out) ? 1 : 0]];
+    const sum = parts.reduce((a, p) => a + p[1], 0) || 1;
+    return `<span class="mini" aria-hidden="true">${parts.map(([c, v]) => v ? `<i style="width:${100 * v / sum}%;background:var(--p-${c})"></i>` : "").join("")}</span>`;
+  }
+
+  function renderMempool(s) {
+    const list = $("mpList"), cnt = $("mpCount");
+    const ids = s.mempool;
+    const detail = new Map((s.mempool_tx || []).map((m) => [m.txid, m]));
+    const ours = new Map(s.tracked.map((t) => [t.txid, t]));
+    const prev = state.prevMp;
+    const sig = ids.join(",");
+    if (prev !== null && prev.sig !== sig) { cnt.classList.remove("pulse"); void cnt.offsetWidth; cnt.classList.add("pulse"); }
+    cnt.textContent = ids.length;
+    const prevSet = prev ? prev.set : new Set(ids);
+    if (!ids.length) {
+      list.innerHTML = `<li class="emptymsg">mempool is empty: everything broadcast so far has been mined.</li>`;
+    } else {
+      list.innerHTML = ids.map((t) => {
+        const m = detail.get(t) || { ironwood: 0, orchard: 0, sapling: 0, t_in: 0, t_out: 0 };
+        const o = ours.get(t);
+        const acts = m.ironwood + m.orchard + m.sapling;
+        const age = m.first_seen_ts ? fmtAge(nowS() - m.first_seen_ts) : "";
+        return `<li class="${prevSet.has(t) ? "" : "new"}" title="${t}">
+          ${mini(m)}<span class="tx">${short(t, 12)}</span>
+          ${o ? `<span class="chip ours">${esc(o.kind)}</span>` : `<span class="chip">${acts ? acts + " act" : "transp"}</span>`}
+          <span class="faint" style="font-size:.7rem;white-space:nowrap">${age}</span></li>`;
+      }).join("");
+    }
+    state.prevMp = { sig, set: new Set(ids) };
+  }
+
+  // ---------- tracked
+  function renderTracked(s) {
+    const list = $("trkList");
+    const t = s.tracked;
+    const mined = t.filter((x) => x.height).length;
+    $("trkMeta").textContent = t.length ? `${t.length} tracked · ${mined} mined · ${t.length - mined} pending` : "heartbeats and share releases";
+    if (!t.length) {
+      list.innerHTML = `<li class="emptymsg">no zpulse txids yet. They appear here from data/ (watchers, reveals), --txids, or the box below.</li>`;
+      return;
+    }
+    const ticks = [];
+    list.innerHTML = t.map((x) => {
+      const prev = state.prevConf.get(x.txid);
+      const ticked = prev != null && x.confirmations > prev;
+      if (ticked) ticks.push(x.txid);
+      state.prevConf.set(x.txid, x.confirmations);
+      const where = x.height
+        ? `block ${x.height}${x.block_time ? " · " + fmtAge(nowS() - x.block_time) + " ago" : ""}`
+        : (x.in_mempool ? "in mempool, waiting for a block" : "not seen yet (mempool or chain)");
+      const fresh = x.height ? x.confirmations <= 10 : true;
+      return `<li class="${fresh ? "fresh" : ""}" title="${x.txid}">
+        <span class="kind ${esc(x.kind)}">${esc(x.kind === "release" ? "release" : x.kind === "heartbeat" ? "heartbeat" : "other")}</span>
+        <span class="body"><span class="tx" style="display:block">${short(x.txid, 14)}</span>
+          <span class="lbl">${esc(x.label)}</span><span class="where" style="display:block">${where}</span></span>
+        <span class="conf ${x.height ? "" : "pending"}"><span class="c${ticked ? " tick" : ""}" data-tx="${x.txid}">${x.height ? x.confirmations.toLocaleString("en-US") : (x.in_mempool ? "0" : "?")}</span>
+          <span class="u">${x.height ? (x.confirmations === 1 ? "confirmation" : "confirmations") : (x.in_mempool ? "pending" : "unknown")}</span></span>
+      </li>`;
+    }).join("");
+  }
+
+  function render() {
+    const s = state.snap;
+    renderStatus();
+    if (!s || !s.info) { renderGhosts(); return; }
+    renderHeader(s);
+    renderBlocks(s);
+    renderSpark(s);
+    renderMempool(s);
+    renderTracked(s);
+    tickClock();
+  }
+
+  // ---------- add txid
+  $("addForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const inp = $("addTx"), msg = $("addMsg");
+    const v = inp.value.trim().toLowerCase();
+    msg.classList.remove("err");
+    if (!/^[0-9a-f]{64}$/.test(v)) { msg.textContent = "a txid is 64 hex characters"; msg.classList.add("err"); inp.focus(); return; }
+    try {
+      const r = await fetch("/api/track?txid=" + encodeURIComponent(v), { cache: "no-store" });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || "rejected");
+      msg.textContent = "tracking " + v.slice(0, 12) + "... (resolves within a few seconds)";
+      inp.value = "";
+    } catch (err) {
+      msg.textContent = "could not add: " + err.message; msg.classList.add("err");
+    }
+  });
+
+  renderGhosts();
+  renderStatus();
+  setInterval(tickClock, 1000);
+  poll();
+})();
+</script>
+</body>
+</html>
