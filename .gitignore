@@ -13,3 +13,5 @@ wallet/zcash-devtool
 .env*
 !.env.example
 demo/*.mov
+.DS_Store
+data-*/
