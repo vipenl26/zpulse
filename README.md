@@ -97,7 +97,7 @@ python3 -m zpulse.reveal --vault data/vaults/leak/vault.json --watch   # anyone 
    ```bash
    git clone https://github.com/zcash/zcash-devtool wallet/zcash-devtool
    git -C wallet/zcash-devtool checkout 0b3436b
-   git -C wallet/zcash-devtool apply ../../wallet/zcash-devtool-pay-min-confirmations.patch
+   git -C wallet/zcash-devtool apply ../zcash-devtool-pay-min-confirmations.patch
    cargo build --release --manifest-path wallet/zcash-devtool/Cargo.toml
    ```
    (or set `ZCASH_DEVTOOL=/path/to/zcash-devtool` to an existing binary).
