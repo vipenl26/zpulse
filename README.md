@@ -131,6 +131,7 @@ Testnet blocks come about every 75 s, so allow a block or two after each pulse b
 - **One-line pitch:** If I stop checking in, the world reads my files. If someone forces me to check in, the world reads them anyway. A threshold dead man's switch for whistleblowers, on Zcash shielded memos.
 - **Testnet transaction (shielded, utest1 addresses, public testnet):** heartbeat #2 of vault `d333806ab0c937e7`: `63ddd6ac26d2b9682bfea0c396b431e7946fff4885f18f52581cfbd952105497` — https://zexplorer.app/testnet/tx/63ddd6ac26d2b9682bfea0c396b431e7946fff4885f18f52581cfbd952105497
 - **Release wallet viewing key (optional, lets judges see the five share memos arrive):** `uviewtest10kcem476j43my50effdc2s0d8yulqnfmegyf4uhhtzdaq5yccejjqgwacw080sf359es0gxew3j00620v78nga8yakh24numzefy4ac2ukgzuzn22uswtser0nqhg6zg6ds3q9g70jprms9uld3w5hen5hh6ll0rkm3cgs6j5cpzcfax7uaedqtdts42f43xlkn2kvk20rggwuw3mn7hrfp9grekqrttktdhs7k96re67q97ckzzsanpdcqsccesplf6c0s4mlhp2mdx0u03rlugqw5uh0tq4dj2yamz7cm0jg7usw22ctj7kv9rxyspj00r0k0nveg89k6r52e4q89ddrlg7w8z803dgh2yg29udgjdsxazykwwxdzvhfvu0rg4la8q6t5vfltqhzjavzhrjtqggx82vqetz338jhvp6e9tdrkrw2udyltycfh53cjmvsqaz9cghruv94hmz00mh5jenl376w0m64wud0vx7js9gyhvk8lx`, birth height 4581595. This key reveals only the release address's history (five 1,000-zat share memos); it cannot spend.
+- **Demo video:** `demo/zpulse-demo-narrated.mp4` (2:20, narrated)
 - **Theme:** 3, privacy beyond the transaction (encrypted memos as transport, viewing keys as the only read path).
 
 ## Privacy and trust note

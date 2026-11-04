@@ -12,3 +12,4 @@ wallet/zcash-devtool
 !.dev.vars.example
 .env*
 !.env.example
+demo/*.mov

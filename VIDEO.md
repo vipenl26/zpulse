@@ -65,3 +65,10 @@ five watchers released on their own, and a view-only wallet decrypted the dossie
   ```bash
   rm -rf data && mv data-testnet-backup data
   ```
+
+## The recorded demo
+
+`demo/zpulse-demo-narrated.mp4` (2:20, 1920x1248, 6 MB) was made on 4 Nov 2026 with a scripted
+screen recording (`screencapture -v` of Chrome in kiosk mode, driven by AppleScript) and a
+Kokoro text-to-speech narration (`af_heart` voice, kokoro-onnx) mixed in with ffmpeg. The
+narration text and timings are in the repo history (scratch script `narrate.py`).
