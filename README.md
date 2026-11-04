@@ -123,9 +123,35 @@ python3 -m zpulse.reveal --vault data/vaults/leak/vault.json --watch   # anyone 
 
 Testnet blocks come about every 75 s, so allow a block or two after each pulse before watchers see it.
 
+## Submission summary
+
+- **One-line pitch:** If I stop checking in, the world reads my files. If someone forces me to check in, the world reads them anyway. A threshold dead man's switch for whistleblowers, on Zcash shielded memos.
+- **Testnet transaction (shielded, utest1 addresses, public testnet):** heartbeat #2 of vault `d333806ab0c937e7`: `63ddd6ac26d2b9682bfea0c396b431e7946fff4885f18f52581cfbd952105497` — https://zexplorer.app/testnet/tx/63ddd6ac26d2b9682bfea0c396b431e7946fff4885f18f52581cfbd952105497
+- **Release wallet viewing key (optional, lets judges see the five share memos arrive):** `uviewtest10kcem476j43my50effdc2s0d8yulqnfmegyf4uhhtzdaq5yccejjqgwacw080sf359es0gxew3j00620v78nga8yakh24numzefy4ac2ukgzuzn22uswtser0nqhg6zg6ds3q9g70jprms9uld3w5hen5hh6ll0rkm3cgs6j5cpzcfax7uaedqtdts42f43xlkn2kvk20rggwuw3mn7hrfp9grekqrttktdhs7k96re67q97ckzzsanpdcqsccesplf6c0s4mlhp2mdx0u03rlugqw5uh0tq4dj2yamz7cm0jg7usw22ctj7kv9rxyspj00r0k0nveg89k6r52e4q89ddrlg7w8z803dgh2yg29udgjdsxazykwwxdzvhfvu0rg4la8q6t5vfltqhzjavzhrjtqggx82vqetz338jhvp6e9tdrkrw2udyltycfh53cjmvsqaz9cghruv94hmz00mh5jenl376w0m64wud0vx7js9gyhvk8lx`, birth height 4581595. This key reveals only the release address's history (five 1,000-zat share memos); it cannot spend.
+- **Theme:** 3, privacy beyond the transaction (encrypted memos as transport, viewing keys as the only read path).
+
+## Privacy and trust note
+
+1. **What stays private:** sender, receiver and amount of every heartbeat and share release are shielded on-chain; every memo (signed heartbeat, Shamir share) is encrypted. The dossier is AES-256-GCM ciphertext until t shares are public. The principal's spending key and signing keys never leave the principal's machine; a watcher never sees them.
+2. **What the app reveals, to whom:**
+   - the light-wallet server (`testnet.zec.rocks`) sees each watcher's and the principal's IP and sync timing, and which compact blocks they fetch;
+   - each watcher sees the heartbeat timing for its vault (not the amounts to other watchers, not the dossier), and holds one share that reveals nothing alone;
+   - anyone with the published release viewing key sees the share memos once released (by design: that is the release);
+   - our software stores vault state as local files only; there is no server, no analytics, no model provider in the loop;
+   - the explorer, if you click a link, sees that you looked up a txid.
+3. **Who users must trust:** the principal trusts that fewer than t watchers collude early and that at least t stay reachable; watchers trust nobody; the world trusts the Zcash chain and the published manifest. There is no operator.
+4. **What we'd fix next:** route watcher sync and broadcast through Nym; a second co-signer or delay for cancel so a seized principal key cannot silently disarm; a hardware-key heartbeat.
+
+## Next 30 days
+
+- Upstream the `pay --min-confirmations` option to zcash-devtool (the patch in `wallet/zcash-devtool-pay-min-confirmations.patch`, 14 lines, needed by anyone spending freshly received notes from a script).
+- Post zpulse in the forum thread "What are you building on Zcash?" and ask z-canary's author about a shared memo format for shares.
+- Publish `zpulse/memo.py` + `zpulse/shamir.py` as a small library for memo-signed threshold release, usable by other apps.
+- Replace the devtool subprocess with zkool_graphql or librustzcash directly, so a watcher runs on a phone.
+
 ## Testnet evidence (4 Nov 2026)
 
-Everything below happened on Zcash testnet, in the Ironwood shielded pool (NU6.3), via `testnet.zec.rocks`. Explorer: `https://testnet.zecblock.com/tx/<txid>`.
+Everything below happened on Zcash testnet, in the Ironwood shielded pool (NU6.3), via `testnet.zec.rocks`. Explorer: `https://zexplorer.app/testnet/tx/<txid>` (or `https://testnet.zecblock.com/tx/<txid>`).
 
 Vault `78d34ee1f3122a6e` (3-of-5, 5 watchers, each with its own wallet and a fresh diversified address):
 

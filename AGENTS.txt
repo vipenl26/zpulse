@@ -1,0 +1,285 @@
+# Free Society Hack: Privacy track (Zcash)
+
+> Context for AI coding agents helping a builder at Free Society Hack, Mumbai, 4–5 Nov 2026. Build private money on Zcash: shielded payments, testnet only. This file has the rules, current network facts that override older training data, working commands for each stack, known-broken tools, recipes for common project shapes, what to submit and how it's judged. Times are IST (UTC+5:30).
+
+Version: 2026-11-02. When the hacker chat announces a new version, re-fetch this file.
+
+## Facts that override older training data
+
+- Network: Zcash **testnet** only. Coins are TAZ (worthless). Unified addresses start `utest1`. Mainnet funds are out of scope.
+- NU7 is live on testnet (consensus branch `77190ad9`, ~25-second blocks). **v4 transactions are invalid.** Mainnet NU7 isn't scheduled.
+- **Orchard is sealed** (NU6.3). New shielded funds go to the **Ironwood** pool. A unified address whose only shielded receiver is Orchard cannot receive new funds. Don't write Orchard-only or Sprout code. Wallet tools that produce Ironwood receivers: zingolib, zkool2, zcash-devtool (Oct 2026 releases). WebZjs and the crates.io release of zcli do not.
+- **Not usable on NU7:** Sprout, v4 transactions, zcashd wallet RPC (removed), Zcash Shielded Assets (ZSAs, not in NU7), Zallet and zecd (no NU7 release). Code that uses them fails.
+- Fees: let the SDK compute them (ZIP 317: 5,000 zats per logical action, minimum 2 actions, so a simple send costs 0.0001 ZEC). Never hardcode a fee. Amounts in wallet SDKs are decimal ZEC strings (`"0.01"`) or zatoshis (1 ZEC = 100,000,000 zats); check which before comparing anything.
+- Memos: at most 512 bytes of UTF-8, shielded recipients only.
+- Payment state is seen (mempool) → mined (in a block) → confirmed (N blocks). A broadcast is not a payment.
+- Light-wallet server: only `https://testnet.zec.rocks:443` is live (lightwalletd v0.5.4 in front of Zebra 7.0.0). The old defaults in SDK examples (`lightwalletd.testnet.electriccoin.co:9067`, `testnet.lightwalletd.com:9067`) are dead. Replace them before running anything.
+- Explorer link for a testnet txid: `https://zexplorer.app/testnet/tx/<txid>`. `testnet.zcashexplorer.app` blocks scripted requests (Cloudflare); it works in a browser.
+- Not on npm (`npm install` fails): `@chainsafe/webzjs-wallet`, `@zcash/sdk`, `@zcash/uri`, `@zcash-router-sdk/core`.
+- There is no pure JavaScript or Python way to create an Ironwood address. Options: a Rust tool (zkool_graphql, zingo-cli, zcash-devtool) or the Noir testnet browser extension.
+
+## First steps
+
+Goal: one real shielded testnet payment, received and detected by your own code. Everything else builds on it.
+
+1. **Make a testnet wallet and print a `utest1` address.** Confirm it has an Ironwood (or Sapling) receiver, not Orchard only. Ways to get one:
+   - zkool_graphql: check https://github.com/hhanh00/zkool2/releases for a prebuilt binary for your OS; otherwise `cargo build` (about 30 min on 4 cores; start it first and keep working).
+   - zingo-cli: `cargo build` (15–30 min).
+   - Noir testnet browser extension: minutes, browser only; gives a `utest1` address and a wallet to send test payments from.
+   - Rust tools download 50 MB of Sapling parameters (`sapling-spend.params`, `sapling-output.params`) from download.z.cash into `~/.zcash-params` on first start.
+2. **Get TAZ.** Fauzec API, 1 TAZ per address per 24 h:
+   ```
+   curl -X POST https://fauzec.com/api/v1/claim -H 'Content-Type: application/json' \
+     -d '{"network":"testnet","address":"utest1..."}'
+   # 200 → {"request_id":"01M...","network":"testnet","state":"...", ...}
+   # 400 → {"state":"failed","outcome":"refused","error_code":"unsupported_address_kind"}  (transparent or malformed address)
+   curl https://fauzec.com/api/v1/status/testnet/<request_id>
+   # poll until "state" is terminal; the body carries the txid once sent. 404 {"error_code":"claim_not_found"} = wrong id
+   ```
+   Fauzec takes `utest1` and `ztestsapling` addresses only (no transparent). Its web form has a Turnstile check; the API does not. OpenAPI: `https://fauzec.com/.well-known/openapi.json`. Valar (https://faucet.testnet.valargroup.dev/, `POST /api/claim`) gives 0.125 TAZ per **IP** per day, so at the venue it works once for the whole room. The Jino Labs faucet is paused for NU7. Any Zcash mentor can send TAZ: post your `utest1` address in the mentors chat.
+3. **Watch it land.** Sync your wallet and list received notes or transactions; read the memo if one was sent. Record the txid and open it in the explorer. This is a candidate for the submission's testnet transaction ID: write it into README.md.
+4. **Send one payment yourself** (wallet A → wallet B, or to your own address with a memo). Typical timings with zkool_graphql: faucet returns a txid at once; visible in the mempool within seconds; mined 1–2 minutes later. Own send: built and broadcast in ~10 s, mined within ~75 s.
+5. **Write the plan**: one-line pitch, the one core flow, who the user is, and the trust-note hops (template below).
+
+Stop and ask a mentor (in person or in the mentors chat) when: a faucet refuses you twice; a tool's sync is stuck below the NU7 height after 10 minutes; your `utest1` address shows only an "orchard" receiver; you want to use WebZjs or zcli; CipherPay rejects your key (tell Kenbak which host you used). Keep building the parts that don't depend on the answer.
+
+## Testnet endpoints
+
+- Public light-wallet server (lightwalletd gRPC): `https://testnet.zec.rocks:443`
+- Faucets: [Fauzec](https://fauzec.com) (API above), [Valar](https://faucet.testnet.valargroup.dev/). Mentors send TAZ on request.
+- Explorers: [Zexplorer](https://zexplorer.app) (`/testnet/tx/<txid>`), [testnet.zcashexplorer.app](https://testnet.zcashexplorer.app) (browser only).
+- Local private network: [Thus Spoke Zakura v0.4.0](https://github.com/zcashlabs/thus-spoke-zakura/releases/tag/v0.4.0) (`curl … install.sh | sh`, needs Docker; `ths run`, `ths wallet faucet --accounts 2 --amount 1`, `ths endpoints --json`, `ths rpc`). NU7 on, own faucet, on-demand mining. It is **regtest**: addresses start `uregtest1` and its txids are not valid submission evidence.
+
+## Stacks that work on NU7 testnet
+
+| Building | Use | Install and run | Watch out |
+| --- | --- | --- | --- |
+| Backend, bot, payment watcher, anything headless | [zkool2](https://github.com/hhanh00/zkool2) `zkool_graphql`: GraphQL wallet server, NU7 + Ironwood, built-in NEAR Intents and FROST | See "zkool_graphql reference" below | Rust build (~30 min). The server exposes seeds when run unauthenticated (see below). |
+| Hosted checkout, no wallet code | [CipherPay](https://cipherpay.app) testnet | See "CipherPay testnet" below | CipherPay holds your viewing key: it sees every payment and memo to that account. |
+| Web dApp, user pays from their own wallet | [Noir Wallet SDK](https://docs.zknoir.com/noir-sdk-integration/) `npm i @noir-wallet/sdk` (0.1.9) | See "Noir Wallet SDK" below | Separate testnet extension build; SDK can't switch networks. |
+| Rust CLI or bot | [Zingolib](https://github.com/zingolabs/zingolib) `zingo-cli` (8.0.0, Oct 2026, Ironwood) or [librustzcash](https://github.com/zcash/librustzcash) | `cargo build --release`; `zingo-cli --server https://testnet.zec.rocks:443 --chain testnet …`. Data dir and commands: `zingo-cli/README.md` | Long first build. |
+| Terminal prototyping | [zcash-devtool](https://github.com/zcash/zcash-devtool) (Oct 2026, Ironwood) | `age-keygen -o id.txt`, then `cargo run --release -- wallet -w <dir> init --name demo -i id.txt -n test` (`-s zecrocks` picks the server), then `sync`, `balance`, `propose`/`send` | Not for production; long build. |
+| Agent wallet with a spending cap over MCP | [zshield-mcp](https://github.com/Steeve-Crypto/zshield-mcp) | One tool `zcash_pay`: per-call cap, recipient allow-list, viewing-key-fingerprinted audit log. `npm run demo:mock` runs on a mock chain; the live adapter sends real testnet payments through zingo-cli | The default chain is a mock; a mocked payment is not a working demo. Replacing the stubbed chain layer with a real testnet backend is an open first issue (Steeve, maintainer). |
+| Scaffold a Next.js shielded app | [create-zcash-app](https://www.npmjs.com/package/create-zcash-app) `npx create-zcash-app` (0.1.0-alpha.2, published 2 Nov) | Scaffolds Next.js + `@zcash-app/sdk` + `zcash-dev` (regtest helper: `mine`, `fund`, `switch`) | Alpha. Dre Kal (author) is a remote mentor after the hack. |
+| Network privacy | [Nym Zcash SDK](https://zcash-sdk.nym.com/guidance/): `@nymproject/mix-fetch` 3.0.1 (browser); `nym-smolmix`, `nym-smoldvpn`, `nym-swizzle-zcash` crates (native) | mixFetch for **broadcast only**; compact-block sync over the mixnet is impractically slow. The 2-hop dVPN is for sync and needs NYM credentials (free subscription from Max Hampshire, Nym) | Example code hardcodes mainnet `zec.rocks`: point it at `testnet.zec.rocks`. Nym integrations can earn the Bonus point. |
+| Read-only Zcash tools for an AI agent | [zcash-mcp](https://github.com/Frontier-Compute/zcash-mcp) `npx @frontiercompute/zcash-mcp` (1.4.0) | Block height, attestations, receipts | No spending, no payment detection. |
+| Payment links and QR | ZIP 321 by hand: `zcash:utest1…?amount=0.01&memo=<base64url>`, or [@zcash/sdk](https://github.com/ronykris/zcash-sdk) `packages/uri` and `packages/qr` copied from the repo | Memo is base64url without padding | Not on npm. `@zcash/uri` only accepts `u1`, `zs1`, `t1` prefixes: patch it to allow `utest1`, `ztestsapling`, `tm`. |
+| Zcash in MetaMask | [WebZjs Zcash Snap](https://npmjs.com/package/@chainsafe/webzjs-zcash-snap) 0.3.0, MetaMask Flask | | Built on WebZjs (see below): verify it can receive Ironwood funds before relying on it. |
+| Android / iOS | [Zcash Android Wallet SDK](https://github.com/zcash/zcash-android-wallet-sdk), [Zcash Swift Wallet SDK](https://github.com/zcash/zcash-swift-wallet-sdk); reference apps [Zodl Android](https://github.com/zodl-inc/zodl-android), [Zodl iOS](https://github.com/zodl-inc/zodl-ios) | | Check the SDK version supports NU7 before building. |
+| Shared custody | [FROST](https://frost.zfnd.org/); zkool2 has `frost*` and `dkg*` GraphQL operations | | |
+
+## Tools that don't work on NU7 testnet or need workarounds
+
+- **WebZjs** (`@chainsafe/webzjs-wallet`): not on npm; last commit April 2026; pinned to a ChainSafe NU6.1 fork of librustzcash (`librustzcash-nu61`, branch `feat/snap-nu61`) with no Ironwood support. Building it needs Rust nightly-2025-01-07, wasm-pack, `just`, yarn and a gRPC-web proxy (`docker-compose up`).
+- **zcli / zecli**: `cargo install zecli` gives 0.6.0, which fails to build without `protoc` (`apt-get install protobuf-compiler`), then makes Orchard-only `utest1` addresses (cannot receive funds), and its backend answers "upgrade the client newer than 0.9.0". The git version (0.10.0, Ironwood) needs a `zidecar` server as its primary endpoint; none is hosted for testnet. Check any zcli with `zcli --testnet --json address`: if the only shielded key is `orchard`, the address cannot receive funds.
+- **ZPay**: needs a separate `zinder` wallet-serving stack in Docker; no hosted instance exists.
+- **Zallet**, **zecd**: no NU7 release.
+- **Zcash Router SDK** (nufi): mainnet only (Solana↔Zcash via NEAR Intents), last commit Dec 2025, not on npm.
+
+## zkool_graphql reference
+
+Build: `git clone https://github.com/hhanh00/zkool2 && cd zkool2/rust && cargo build --release --features graphql --bin zkool_graphql`. The binary lands in `zkool2/target/release/`. Needs the Rust toolchain.
+
+Run:
+```
+zkool_graphql -d wallet.db -p 8000 -l https://testnet.zec.rocks:443 -C 1 --allow-unauthenticated --allow-unencrypted-database
+```
+- `-C 1` = testnet; it applies only when creating a new database.
+- **`--allow-unauthenticated` exposes every field, including `accounts { seed }`, to anyone who can reach the port.** Don't run an account with a seed that way on a network others can reach (venue wifi included). Run watch-only (UFVK) accounts on any reachable machine; keep seed accounts on localhost or behind JWT (`-j`).
+- First start downloads the Sapling parameters (50 MB) from download.z.cash into `~/.zcash-params`.
+
+GraphQL endpoint: `http://localhost:8000/graphql` (POST `{"query": "..."}`). Calls:
+- `{ currentHeight }`
+- `mutation { createAccount(newAccount: { name: "hack", key: "", useInternal: true, aindex: 0 }) }` → account id.
+- Watch-only account: pass a `uviewtest…` UFVK as `key` and **set `birth`** to a height at or below the first payment you care about. Without `birth`, the account starts at the current tip and syncs with no history and balance 0. A watch-only account has no spending key: `pay` on it returns `{"errors":[{"message":"No Signing Key"}]}`.
+- `{ addressByAccount(idAccount: 1) { ua } }` → `utest1…` with transparent, Sapling and Ironwood receivers (`pools: 4` gives an Ironwood-only UA).
+- `{ unifiedFullViewingKey(idAccount: 1) }` → `uviewtest…`
+- `mutation { synchronize(idAccounts: [1], fast: false) }` → height.
+- `{ unconfirmedByAccount(idAccount: 1) { txid value } }`: payments seen in the mempool. It keeps listing txids after they are mined, so treat a txid as seen once and confirm it via `transactionsByAccount` height.
+- `{ transactionsByAccount(idAccount: 1) { id txid height time value fee notes { pool value address scope memo } } }`:
+  - `time` is the block time (UTC).
+  - `value` is the net change of the whole account; a self-send with a memo shows `-0.0001` (just the fee). Test amount checks with a second wallet, not a self-send.
+  - The amount a payer sent you is `notes[].value` on notes with `scope: 0`; `scope: 1` is change.
+  - `notes[].memo` carries the memo. `pool`: 0 transparent, 1 Sapling, 2 Orchard, 3 Ironwood.
+  - `id`s are per-account row ids; correlate on `txid`.
+- `{ memosByTransaction(idAccount: 1, idTransaction: <id>) }` → `["ORDER-42"]`
+- `{ balanceByAccount(idAccount: 1) { transparent sapling orchard ironwood } }`
+- `mutation { pay(idAccount: 1, payment: { recipients: [{ address: "utest1…", amount: 0.01, memo: "ORDER-42" }], confirmations: 1 }) }` → txid in ~10 s. Run `synchronize(idAccounts: [1])` on the spending account before each `pay`, or the second one fails with `No feasible note selection found`.
+- `{ transactionById(idAccount: 1, txid: "…") { height time value } }`
+- Also available: `prepareSend`, `signTx`, `broadcastTx`, `mempoolStream`, `subscribe` (events), `nearIntentsQuote`, `nearIntentsSubmitDeposit`, `nearIntentsStatus`.
+- Introspect anything else: `{ __type(name: "Mutation") { fields { name args { name type { name ofType { name } } } } } }`.
+- Sample scripts: `example/sh`, `example/js`, `example/py`; MCP server: `example/zkool-mcp`.
+
+## CipherPay testnet
+
+Testnet is a separate environment from mainnet (`cipherpay.app`, `api.cipherpay.app`); there is no toggle.
+1. Export your testnet UFVK (`uviewtest…`; zkool_graphql `unifiedFullViewingKey`, zingo-cli per its README).
+2. Register at `https://testnet.cipherpay.app/dashboard/register` and paste it.
+3. Dashboard: copy the API key `cpay_sk_…`; set the webhook URL (plain `http://` allowed on testnet; set in the dashboard, not per invoice) and copy the `whsec_…` secret from Settings.
+4. `POST https://api.testnet.cipherpay.app/api/invoices` with `Authorization: Bearer cpay_sk_…` and `{"amount":0.5,"currency":"USD","product_name":"Order 42"}` → `{invoice_id, memo_code, price_zec, zcash_uri, payment_address, expires_at}`. Render `zcash_uri` as a QR (`npm i qrcode`) or link the hosted pay page on `testnet.cipherpay.app/pay/{invoice_id}`.
+
+Webhooks:
+- Events: `detected`, `confirmed`, `underpaid`, `expired`, `invoice.created`.
+- Payload: `{event, invoice_id, txid, timestamp, price_zec, received_zec, overpaid}`.
+- Headers: `X-CipherPay-Signature` = HMAC-SHA256 hex of `X-CipherPay-Timestamp + "." + raw body`, keyed with `whsec_…`. Verify over the raw bytes (not re-serialised JSON), compare in constant time, reject timestamps older than 5 minutes.
+- `X-CipherPay-Delivery-Id`: retries happen, so dedupe on it. Return 200 for invoices you don't know.
+- Fulfil on `confirmed` (1 block), never on `detected`.
+
+Not in the public docs: a GET-invoice endpoint, the webhook retry count and window. Ask Kenbak (CipherPay, remote). CORS is open on testnet.
+
+## Noir Wallet SDK
+
+- `const w = getNoirWallet(); if (!w) …` reads `window.noirwallet`. It can be null on first render; retry after load.
+- `const c = await w.zcash.connect()` must be called from a click. It returns `{ transparent, shielded, accounts[] }`. On reload, `await w.zcash.getAccounts()` is silent and returns `null` if not connected.
+- Balance: `const b = await w.zcash.getBalance()` → `b.shielded` as a decimal ZEC string; `synced === false` means the value is cached.
+- Fee for a confirmation screen: there is no per-amount estimate. `const { maxAmount, fee } = await w.zcash.getMaxTransfer({ to, memo, fundingSource: 'shielded' })` gives the ZIP 317 fee of the send-max proposal, which is approximate for smaller sends.
+- Send: `await w.zcash.sendTransaction({ to: 'utest1…', amount: '0.01', memo: 'order 42', fundingSource: 'shielded' })` returns a txid after the user approves in the popup. `fundingSource` needs extension ≥1.0.27 (omitted, it defaults to shielded).
+- Events: `w.zcash.on('accountsChanged', …)`.
+- Testnet is a separate extension: download the release asset ending `-testnet.zip` from https://github.com/NoirWallet/noir-wallet/releases and load it unpacked. It installs as "[Testnet] Noir Wallet".
+- `switchNetwork()` throws and there is no `getNetwork()`: validate the recipient prefix (`utest1`, `ztestsapling`) yourself.
+- No confirmation API: watch the txid with your own viewing-key watcher or the explorer.
+- Memo ≤512 bytes, shielded recipients only.
+- The full API is in the SDK's `.d.ts` in `node_modules`.
+- Noir's suggested first project is a React dApp that connects, shows the balance and sends a shielded payment. Noir integrations can earn the Bonus point. Questions (including which light-wallet server the testnet build syncs through): Max (Noir).
+
+## Taking a payment (the pattern behind most projects)
+
+1. Ask: a `zcash:` payment URI and QR ([ZIP 321](https://zips.z.cash/zip-0321)) with address, amount and the order ID in the memo. A memo is encrypted on-chain; only holders of the receiver's viewing key can read it.
+2. Detect: give the server a **viewing key** ([ZIP 316](https://zips.z.cash/zip-0316) unified full viewing key, `uviewtest…`). It sees incoming payments and memos but can't spend. The spending key stays off the server.
+3. Confirm: wait until the payment is mined; larger amounts warrant more confirmations. Act exactly once per txid (store txids you've acted on). State in the README which confirmation threshold you chose.
+
+Testnet timing: mempool visibility within seconds, mined in ~30–90 s.
+
+## Recipes for common project shapes
+
+**A. Checkout matched by memo (Theme 1).** zkool_graphql watch-only account + ZIP 321 link. Server: create an invoice (order code → memo), show the URI and QR, poll `transactionsByAccount` and `memosByTransaction` (or `subscribe`), match the memo, mark paid after 1 block. Stranger test: a judge with a testnet wallet pays and sees "paid". Bonus candidate: publish the watcher as a small library or npm package.
+
+**B. Hosted checkout (Theme 1).** CipherPay testnet invoice + webhook handler. Verify the signature over the raw body, dedupe on delivery ID, act on `confirmed` only, record `overpaid` for a manual refund, never fulfil `underpaid`. A local fake that signs test webhooks with the same HMAC lets you build before registering. A judge pays from a testnet wallet (Noir testnet extension, or Zingo! with testnet enabled).
+
+**C. dApp with the user's own wallet (Theme 2, Noir partner).** React + `@noir-wallet/sdk`: connect, show balance, plain-language confirmation screen (who, how much, approximate fee from `getMaxTransfer().fee`, who can see it: the recipient sees amount and memo; chain observers see that a shielded tx happened and its fee; Noir's light-wallet server sees IP and timing; your page stores what you say it stores), send with memo, show the txid and explorer link, then watch confirmation with recipe A on the receiving side.
+
+**D. Agent pays per call (Theme 1, HTTP 402).** An API that answers 402 with a ZIP 321 URI and a nonce in the memo; the agent wallet (zkool_graphql `pay`, or zshield-mcp `zcash_pay` with its cap) pays; the API's viewing-key watcher unlocks the call when the memo arrives. The spending cap lives in code, not in the prompt.
+
+**E. Privacy beyond the transaction (Theme 3).** Viewing-key export to CSV/JSON: create a zkool_graphql account from the UFVK with `birth`, `synchronize`, then `transactionsByAccount { txid height time fee notes { value scope memo address } }` and emit one row per `scope: 0` note (txid, height, time, amount, memo, `https://zexplorer.app/testnet/tx/<txid>`). Prove read-only access by calling `pay` once on the watch-only account and quoting the `No Signing Key` error. A receipt for one txid: the explorer proves only existence, height and fee; amount and memo are checkable only by another holder of the viewing key. Other Theme 3 shapes: invoices or tickets in encrypted memos; broadcasts through Nym mixFetch (Nym is the host partner).
+
+**F. Both tracks: shielded payment triggers a Bitrefill purchase (Lane 5 + Theme 1).** Testnet TAZ cannot pay Bitrefill. The loop: shielded testnet payment with an order code in the memo → your watch-only account sees it (`unconfirmedByAccount`), then confirms it mined (`transactionsByAccount` height) → guardrails (allowed product, cap, one purchase per txid, reserved before the call) → Bitrefill REST v2 `POST /invoices` with `payment_method: "balance"`, `auto_pay: true` from event credits → poll to `delivered` → receipt. The phone number for a top-up either travels in the memo (stored next to the txid until delivery) or sits in a server-side allowlist keyed by order code; the trust note says which. Accurate pitch: "a shielded payment authorises the purchase", not "pays for it". Exact Bitrefill fields: Agentic Commerce file.
+
+**G. Mainnet route for real ZEC → Bitrefill (not testnet; no testnet exists for it).** Bitrefill takes no ZEC. Route: shielded ZEC → deshield to a transparent `t1` address → NEAR Intents 1Click (ZEC → USDC on Base, into a Base wallet you control) → Bitrefill `usdc_base` invoice paid from that wallet.
+- API `https://1click.chaindefuser.com/v0` (docs: https://docs.near-intents.org, "1Click API"). `GET /v0/tokens` lists assets with decimals and a USD price.
+- `POST /v0/quote` body: `{dry:true, swapType:"EXACT_INPUT", slippageTolerance:100, originAsset:"nep141:zec.omft.near", destinationAsset:"nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near", amount:"1000000", depositType:"ORIGIN_CHAIN", refundTo:"t1…", refundType:"ORIGIN_CHAIN", recipient:"0x…", recipientType:"DESTINATION_CHAIN", deadline:"<ISO 8601>"}`. `dry:true` quotes without creating a deposit address.
+- ZEC has 8 decimals (amount in zatoshis as a string); USDC has 6.
+- `refundTo` must be a mainnet `t1…` (`utest1`, `u1`, `tm` and shielded addresses get 400 "refundTo is not valid"). `recipient` must be a Base account you control (burn addresses and token contracts get 400 "recipient is not valid").
+- Minimum 132,000 zats (0.00132 ZEC); the error message names it.
+- Example quote (ZEC ≈ $1,248): 0.01 ZEC → 12.40–12.45 USDC, fee $0.02–0.05, `timeEstimate` ≈ 460 s. The response carries `refundFee` (32,000 zats withheld on refunds), `withdrawFee`, and a default `appFees:[{fee:20}]` (20 bps) when none is passed.
+- Live flow: `dry:false` returns `quote.depositAddress` and `deadline`; deshield exactly `amountIn` to it before the deadline; optionally `POST /v0/deposit/submit {txHash, depositAddress}`; poll `GET /v0/status?depositAddress=…` through `PENDING_DEPOSIT → KNOWN_DEPOSIT_TX → PROCESSING → SUCCESS` (or `REFUNDED`, `FAILED`, `INCOMPLETE_DEPOSIT`: late or short deposits are refunded to `refundTo` minus `refundFee`, publicly).
+- Create the Bitrefill invoice (`POST /v2/invoices`, `payment_method:"usdc_base"`) only after the USDC lands (invoice quotes expire in minutes); pay it from the recipient wallet (needs a little ETH on Base for gas).
+- zkool_graphql wraps this as `nearIntentsQuote`, `nearIntentsSubmitDeposit`, `nearIntentsStatus`.
+- What's visible: deshielding publishes the deposit address, amount and timing; 1Click and its solvers see recipient, refundTo and your IP and hold the funds for ~8 minutes; Base shows USDC arriving and leaving for Bitrefill; Bitrefill links the paying address to the phone number or email.
+
+## Themes (pick one, or bring an idea that fits one)
+
+1. Private payment rails: checkout matched by memo, batch payouts, payment links, HTTP 402 per-call APIs, capped agent wallets, @zcash/sdk pieces, starter templates, MCP servers or an llms.txt so AI agents write current Zcash code.
+2. The first five minutes: onboarding to a first shielded payment in minutes, paying a name, plain confirmation screens, translations, low-end phones. Test with someone who didn't build it.
+3. Privacy beyond the transaction: viewing-key exports, verifiable receipts, 2-of-3 treasuries, tickets or invoices in encrypted memos, network privacy (Nym is the host partner).
+
+Partners want to see: Noir Wallet (private payment and checkout apps, Zcash DeFi, AI apps that pay in shielded ZEC); Nym (network privacy, Theme 3). Stand-out Nym or Noir integrations can earn the Bonus point.
+
+## Rules
+
+- Hacking runs Wed 4 Nov 11:00 to Thu 5 Nov 00:00. All code is made in that window: new repo on the day, judges check commit history. Open-source libraries, SDKs and templates are fine.
+- Solo or a team of up to 4 including the point person; the point person receives any prize.
+- One submission per project: pick Privacy, or Both to enter and win in both tracks (then fill in both tracks' fields).
+- Submit on [Stadium](https://stadium.joinwebzero.com/programs/free-society-hack-2026) with the point person's Luma email. Save a draft early (only you see it), give teammates edit access from the team list (their Luma email must be checked in), submit the event feedback, then click **Finalize and submit** by Wed 4 Nov 20:00 to be in the first judging session (20:00–22:00). Drafts are not judged. After finalizing you can keep editing until 00:00. Code after 00:00 isn't scored.
+- Never put spending keys or seed phrases in code, logs, prompts or the repo. Viewing keys are fine on the server; label them.
+
+## Submission checklist
+
+Judges score from the submission only. Every item is required unless marked.
+
+- [ ] One-line pitch: what it does and for whom. Works is scored against it.
+- [ ] Public repo (new on the day) with a README that lists every technology used and the design decisions.
+- [ ] One testnet transaction ID the project created (shielded, `utest1` addresses, public testnet, not Zakura). Stadium checks it and shows judges a badge; a failed check doesn't block you.
+- [ ] Optional: the viewing key (uviewtest…) and birth height of the wallet that received the payment, so judges can see the amount and memo. Use the demo wallet: the key reveals that wallet’s whole history but cannot spend. zkool_graphql: unifiedFullViewingKey; zingo-cli: see its README.
+- [ ] Public testnet URL if it's an app people use (web app, checkout, dashboard). SDKs, CLIs, bots, agents and backends skip it and show the transaction in the video or README (explorer link).
+- [ ] Privacy and trust note (template below).
+- [ ] Next step for the 30 days after, with links to anything started.
+- [ ] Demo video, 2–3 minutes (judges watch only the first 3), every step real. Optional but the easiest way to prove Works.
+- [ ] FEEDBACK.md in the repo (optional, not scored; it goes to the teams who fix things): what broke, confused or slowed the builder, by area. Paste it into Stadium's friction notes field and tag the areas. The builder writes the final version.
+
+Privacy and trust note template:
+
+```
+1. What stays private: sender, receiver and amount are shielded on-chain; the memo is encrypted.
+2. What the app reveals, to whom:
+   - the light-wallet server (testnet.zec.rocks) sees the watcher's IP and sync timing
+   - CipherPay (if used) holds our viewing key and sees invoices, txids, amounts and memos
+   - our server stores <order codes / txids / nothing else>; emails or phone numbers <are / are not> stored next to txids
+   - Bitrefill (if used) sees the purchase, the phone number or email, and our account
+   - the AI model provider (if an LLM is in the loop) sees <what you send it>
+3. Who users must trust: us as operator; <each party above>.
+4. What we'd fix next: <e.g. Nym for the watcher's traffic; delete order data after delivery>.
+```
+
+FEEDBACK.md skeleton (delete empty areas):
+
+```
+# Feedback
+## Faucet
+## Node or indexer (lightwalletd, Zebra, Zaino)
+## SDK or wallet tool (which one, which version)
+## Wallet
+## Docs
+## Other
+For each item: what you tried, what happened, what you expected, a link or error message.
+```
+
+Full README template (copy it into the repo as README.md): https://stadium.joinwebzero.com/programs/free-society-hack-2026/privacy/README-template.md
+
+README skeleton:
+
+```
+# <Name>: <one-line pitch>
+## Who it's for and the problem   (real evidence only: who you talked to, what they said)
+## Demo: <video link> · <public URL> · testnet tx: <txid + https://zexplorer.app/testnet/tx/...> · viewing key (optional): <uviewtest…, birth height>
+## Run it (under 15 minutes)
+## How it works (core flow, step by step; mark any manual step)
+## Privacy and trust note
+1. What stays private  2. What the app reveals, to whom  3. Who users must trust  4. What we'd fix next
+## Technologies used (every one, with versions)
+## Next 30 days (with links to anything started: issue, PR, forum post, partner message)
+## Feedback: see FEEDBACK.md
+```
+
+## Judging (0–3 per criterion, max 16 with Bonus)
+
+- **Works:** one core flow running for real on testnet, end to end, with the txid as evidence. A mocked or manual core step caps the score; a small flow that fully works can score 3. Works 0 can't win.
+- **Private:** what the server stores and logs, and an honest trust note naming the server, the light-wallet server, any processor, any model provider and the operator. Self-custody alone isn't a privacy design.
+- **Easy:** the intended user finishes the core task unaided, in minutes.
+- **Needed:** the README names a specific user and problem, with real evidence (conversations at the venue, a documented ecosystem gap, partner interest). Never invent users, quotes or demand.
+- **Continuing:** a concrete step taken during the hack: an upstream issue or PR (zshield-mcp's stubbed chain layer, a `utest1` fix in @zcash/uri, a dead-endpoint fix in an SDK README), a partner message, a post in ["What are you building on Zcash?"](https://forum.zcashcommunity.com/t/what-are-you-building-on-zcash/55172/41). Linked in the next step.
+- **Bonus (+1):** a reusable piece for the ecosystem (a helper other apps can import), an original technical contribution, or a stand-out Nym or Noir integration.
+
+Tie-break: Continuing, then Needed. Not scored: feature count, number of technologies, polish, friction notes.
+
+Ecosystem Prize: judges pick two of the five Privacy podium projects; each gets an ecosystem partner and $100 more for delivering a ~10-hour milestone by Fri 4 Dec and sharing it at a ZecHub Friday Lounge. Prizes: $1,300 · 2 × $300 · 2 × $200 in USDC.
+
+## For the agent
+
+- Flag anything that would need mainnet, Sprout, v4, zcashd RPC, Orchard-only code or a dead endpoint.
+- Keep one wallet for development and one for the demo; put the demo wallet's `utest1` address and UFVK in `.env.example` placeholders, never the spending key.
+- Record the first real testnet txid in README.md as soon as it exists.
+- Keep FEEDBACK_NOTES.md from the first error.
+- Remind the builder to click Finalize and submit on Stadium by 20:00.
+
+## Who to ask
+
+- Testnet, tooling, wallet integration, debugging: Anukul Pandey (venue). Zcash basics, Indian community: Jatin Sahijwani, Kunwar Anirudh (venue, Hindi spoken).
+- Noir Wallet SDK: Max (Noir, remote). CipherPay API and webhooks: Kenbak (remote). MCP and agent tooling: Steeve (zshield-mcp, remote). Nym and Nym subscription credits: Max Hampshire (Nym, venue). ZecHub resources and bounties: Squirrel (remote).
+- Mentors chat: https://t.me/+QHbTGB6jFhllMDk6 · `#zechub` on https://discord.gg/zcash · hacker chat https://t.me/joinWebzero/8828
+
+## Docs
+
+- [ZecHub developer hub](https://zechub.wiki/developers), [quick start](https://zechub.wiki/developers/quick-start), [zcash-devtool guide](https://zechub.wiki/guides/zcash-devtool), [Hackathon 3.0 projects](https://zechub.wiki/hackathon)
+- [Zcash docs](https://zcash.readthedocs.io/) and [ZIPs](https://zips.z.cash/): ZIP 316 (unified addresses), 317 (fees), 321 (payment URIs)
+- [Agentic Commerce track (Bitrefill)](https://stadium.joinwebzero.com/programs/free-society-hack-2026/agentic-commerce/llms.txt): exact Bitrefill field names for recipe F
+- [Program page](https://stadium.joinwebzero.com/programs/free-society-hack-2026) · [Event index](https://stadium.joinwebzero.com/programs/free-society-hack-2026/llms.txt) · [Builder Pack](https://app.notion.com/p/3ff3e52aeb15807eace6f16f84a74c14)
