@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>zpulse principal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: dark;
+  --bg:#070a08; --bg-2:#0b100c; --panel:#0d140f; --line:#1c2a20; --line-2:#26392b;
+  --ink:#4dff8f; --ink-strong:#8dffb6; --ink-dim:#2fbf68; --glow:rgba(77,255,143,.35);
+  --text:#c9dccd; --muted:#7f9686; --faint:#4d6153;
+  --amber:#ffb547; --amber-glow:rgba(255,181,71,.35);
+  --red:#ff5c5c; --red-glow:rgba(255,92,92,.35);
+  --sel:rgba(77,255,143,.25);
+  --font-display:"Share Tech Mono","VT323",ui-monospace,monospace;
+  --font-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-mono);font-size:14px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;min-height:100vh;font-variant-numeric:tabular-nums}
+::selection{background:var(--sel);color:var(--ink-strong)}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:50;
+  background:repeating-linear-gradient(to bottom,transparent 0,transparent 2px,rgba(0,0,0,.16) 3px,transparent 4px);
+  mix-blend-mode:multiply;opacity:.5}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
+  background:radial-gradient(ellipse at 50% 0%,rgba(77,255,143,.05),transparent 60%)}
+.wrap{max-width:1080px;margin:0 auto;padding-block:0 48px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px))}
+a{color:var(--ink);text-decoration:underline;text-decoration-color:var(--line-2);text-underline-offset:3px;overflow-wrap:anywhere}
+a:hover{color:var(--ink-strong);text-decoration-color:var(--ink)}
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,label.file:focus-within,summary:focus-visible{
+  outline:2px solid var(--ink);outline-offset:2px}
+h1,h2,h3{font-family:var(--font-display);font-weight:400;color:var(--ink);text-wrap:balance;margin:0;letter-spacing:.01em}
+h2{font-size:1.6rem;line-height:1.1;text-shadow:0 0 14px var(--glow)}
+h3{font-size:1.25rem;line-height:1.15;color:var(--ink-strong)}
+p{margin:0 0 .8em;max-width:70ch}
+code{font-family:var(--font-mono);color:var(--ink-strong);font-size:.92em;overflow-wrap:anywhere}
+strong{color:var(--ink-strong);font-weight:600}
+.muted{color:var(--muted)} .faint{color:var(--faint)} .amber{color:var(--amber)}
+
+/* header */
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px 20px;flex-wrap:wrap;padding-block:16px;border-bottom:1px solid var(--line)}
+.brand{font-family:var(--font-display);font-size:1.7rem;color:var(--ink);line-height:1;text-shadow:0 0 18px var(--glow)}
+.brand span{color:var(--faint)}
+.top .right{display:flex;gap:10px 14px;align-items:center;flex-wrap:wrap}
+.clock{font-size:.78rem;color:var(--muted)}
+.badge{display:inline-block;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;padding:2px 8px;border:1px solid var(--line-2);color:var(--ink-dim)}
+.badge.testnet{border-color:var(--amber);color:var(--amber)}
+.conn{font-size:.72rem;color:var(--faint)} .conn.bad{color:var(--amber)}
+
+/* section heads */
+.sec{padding-block:28px 0}
+.sh{display:flex;align-items:baseline;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.sh .idx{font-family:var(--font-display);font-size:1.6rem;color:var(--ink-dim);line-height:1}
+.sh .lede{color:var(--muted);flex-basis:100%;margin:2px 0 0;font-size:.86rem}
+
+/* panels */
+.panel{border:1px solid var(--line-2);background:linear-gradient(var(--panel),var(--bg-2));min-width:0}
+.ph{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--line);
+  font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.pb{padding:14px}
+.grid2{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}
+
+/* identity */
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));margin:0}
+.kv>div{padding:10px 14px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
+.kv dt{color:var(--faint);text-transform:uppercase;letter-spacing:.12em;font-size:.66rem}
+.kv dd{margin:2px 0 0;color:var(--text);overflow-wrap:anywhere;font-size:.86rem}
+.kv dd.big{font-family:var(--font-display);font-size:1.5rem;color:var(--ink);line-height:1.1}
+.kv .wide{grid-column:1/-1}
+.vkrow{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
+.vkrow code{flex:1 1 220px;min-width:0}
+
+/* explainer */
+.agree{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));border-top:1px solid var(--line);border-left:1px solid var(--line);margin:0;padding:0;list-style:none}
+.agree li{padding:14px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.agree b{display:block;font-family:var(--font-display);font-weight:400;font-size:1.1rem;color:var(--ink-strong);line-height:1.2;margin-bottom:4px}
+.agree li.warn b{color:var(--amber)}
+.agree p{margin:0;font-size:.82rem;color:var(--text)}
+
+/* forms */
+textarea{width:100%;min-height:150px;resize:vertical;background:var(--bg);color:var(--text);border:1px dashed var(--line-2);padding:10px 12px;
+  font:inherit;font-size:.8rem;line-height:1.5}
+textarea::placeholder{color:var(--faint)}
+textarea.drag{border-color:var(--ink);background:rgba(77,255,143,.04)}
+input[type=number]{width:5.5em;background:var(--bg);color:var(--text);border:1px solid var(--line-2);padding:6px 8px;font:inherit;font-size:.82rem}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:8px 14px;border:1px solid var(--ink);color:var(--bg);background:var(--ink);
+  font:inherit;font-weight:600;font-size:.82rem;letter-spacing:.02em;cursor:pointer;min-height:36px}
+.btn:hover{background:var(--ink-strong);border-color:var(--ink-strong);box-shadow:0 0 16px var(--glow)}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.ghost:hover{background:rgba(77,255,143,.08);color:var(--ink-strong)}
+.btn.warn{background:transparent;color:var(--amber);border-color:var(--amber)}
+.btn.warn:hover{background:rgba(255,181,71,.08);box-shadow:0 0 16px var(--amber-glow)}
+.btn.sm{padding:4px 10px;min-height:28px;font-size:.74rem}
+.btn[disabled]{opacity:.4;cursor:not-allowed;box-shadow:none}
+label.file{position:relative;display:inline-flex;align-items:center;padding:8px 12px;border:1px solid var(--line-2);color:var(--muted);cursor:pointer;font-size:.8rem;min-height:36px}
+label.file:hover{color:var(--ink);border-color:var(--ink-dim)}
+label.file input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.msg{font-size:.8rem;min-height:1.3em;margin-top:8px}
+.msg.err{color:var(--amber)} .msg.ok{color:var(--ink)}
+.out{margin-top:12px;border:1px solid var(--ink-dim);background:var(--bg)}
+.out[hidden]{display:none}
+.out .ph{color:var(--ink)}
+.out pre{margin:0;padding:12px;font-size:.76rem;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink-strong)}
+.out .note{padding:0 12px 12px;font-size:.8rem;color:var(--text)}
+
+/* empty state */
+.empty{border:1px dashed var(--line-2);padding:22px 16px;background:var(--bg-2)}
+.empty h3{margin-bottom:6px}
+.steps{list-style:none;margin:14px 0 0;padding:0;counter-reset:s;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:0;border-top:1px solid var(--line)}
+.steps li{padding:14px 14px 14px 0;display:grid;grid-template-columns:44px minmax(0,1fr);gap:8px;border-bottom:1px solid var(--line)}
+.steps li::before{counter-increment:s;content:"0" counter(s);font-family:var(--font-display);font-size:1.8rem;line-height:1;color:var(--ink-dim)}
+.steps b{display:block;color:var(--ink-strong);font-weight:500}
+.steps p{margin:2px 0 0;font-size:.8rem;color:var(--muted)}
+
+/* vault cards */
+.vaults{display:grid;gap:16px}
+.vc .ph .vid{text-transform:none;letter-spacing:.04em}
+.vc .ph .name{font-family:var(--font-display);font-size:1.15rem;letter-spacing:.02em;text-transform:none;color:var(--ink-strong)}
+.pill{display:inline-block;font-size:.68rem;letter-spacing:.14em;padding:2px 8px;border:1px solid var(--line-2);color:var(--muted);text-transform:uppercase;white-space:nowrap}
+.pill.armed{border-color:var(--ink);color:var(--ink);box-shadow:0 0 10px rgba(77,255,143,.15)}
+.pill.released{border-color:var(--red);color:var(--red)}
+.pill.cancelled{color:var(--faint)}
+.pill.run{border-color:var(--ink-dim);color:var(--ink-dim)}
+.pill.run.on{border-color:var(--ink);color:var(--ink)}
+.pill.run.on::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ink);box-shadow:0 0 8px var(--ink);margin-right:6px;vertical-align:1px;animation:blink 1.4s steps(2,start) infinite}
+@keyframes blink{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.pill.run.on::before{animation:none}}
+.vmeta{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,130px),1fr));border-bottom:1px solid var(--line)}
+.vmeta div{padding:8px 14px;border-right:1px solid var(--line);min-width:0}
+.vmeta dt{color:var(--faint);text-transform:uppercase;letter-spacing:.12em;font-size:.62rem}
+.vmeta dd{margin:0;font-size:.84rem;overflow-wrap:anywhere}
+.vbody{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
+.vbody>div{padding:14px;min-width:0}
+.vbody>div+div{border-left:1px solid var(--line)}
+@media (max-width:660px){.vbody>div+div{border-left:0;border-top:1px solid var(--line)}}
+.cd-label{font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+.cd{font-family:var(--font-display);font-size:clamp(3.6rem,13vw,5.4rem);line-height:.95;color:var(--ink);text-shadow:0 0 24px var(--glow);
+  font-variant-numeric:tabular-nums;margin:4px 0 6px;overflow-wrap:anywhere}
+.cd.idle{color:var(--faint);text-shadow:none}
+.cd.warn{color:var(--amber);text-shadow:0 0 24px var(--amber-glow)}
+.cd.late,.cd.released{color:var(--red);text-shadow:0 0 24px var(--red-glow)}
+.cd.word{font-size:clamp(2.4rem,9vw,3.6rem)}
+.cd.cancelled{color:var(--muted);text-shadow:none}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin:8px 0 0;border-top:1px solid var(--line)}
+.stats div{padding:7px 0;border-bottom:1px solid var(--line);min-width:0}
+.stats div:nth-child(odd){padding-right:10px}
+.stats dt{color:var(--faint);text-transform:uppercase;letter-spacing:.12em;font-size:.62rem}
+.stats dd{margin:0;font-size:.86rem;overflow-wrap:anywhere}
+.stats .full{grid-column:1/-1}
+.duress{color:var(--amber)}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ctl label{font-size:.76rem;color:var(--muted);display:inline-flex;gap:6px;align-items:center}
+.confirm{margin-top:10px;border:1px solid var(--amber);padding:10px 12px;font-size:.8rem;color:var(--text);background:rgba(255,181,71,.04)}
+.confirm[hidden]{display:none}
+.confirm p{margin:0 0 8px}
+.log{margin:10px 0 0;background:var(--bg);border:1px solid var(--line);padding:8px 10px;font-size:.7rem;line-height:1.5;color:var(--muted);
+  white-space:pre-wrap;overflow-wrap:anywhere;max-height:300px;overflow-y:auto}
+.log .hl{color:var(--ink-strong)} .log .wn{color:var(--amber)}
+.sub{font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-top:14px}
+.enrolled{font-size:.78rem;color:var(--muted);margin-top:8px}
+.foot{margin-top:36px;padding-top:14px;border-top:1px solid var(--line);font-size:.74rem;color:var(--faint)}
+/* principal additions */
+[hidden]{display:none!important}
+label.f{display:block;font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:12px 0 4px}
+input[type=text]{width:100%;max-width:22em;background:var(--bg);color:var(--text);border:1px solid var(--line-2);padding:6px 8px;font:inherit;font-size:.86rem}
+input[type=number].w{width:8em}
+textarea.sm{min-height:96px}
+.fgrid{display:grid;gap:0 18px;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))}
+.preset{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.hint{font-size:.74rem;color:var(--muted);margin-top:4px}
+.pulsebtn{width:100%;min-height:84px;font-family:var(--font-display);font-size:2.2rem;letter-spacing:.12em;font-weight:400}
+.quiet{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px}
+.lnk{background:none;border:0;padding:4px 0;font:inherit;font-size:.76rem;color:var(--faint);cursor:pointer;text-decoration:underline;text-decoration-color:var(--line-2);text-underline-offset:3px}
+.lnk:hover{color:var(--muted)} .lnk.am:hover{color:var(--amber)}
+.lnk:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.confirm.red{border-color:var(--red);background:rgba(255,92,92,.04)}
+table.hist{width:100%;border-collapse:collapse;font-size:.74rem;margin-top:6px}
+table.hist th{text-align:left;font-weight:400;color:var(--faint);text-transform:uppercase;letter-spacing:.12em;font-size:.6rem;padding:4px 6px 4px 0;border-bottom:1px solid var(--line)}
+table.hist td{padding:4px 6px 4px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere;vertical-align:top}
+.wl{list-style:none;margin:6px 0 0;padding:0;font-size:.78rem}
+.wl li{display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap;padding:5px 0;border-bottom:1px solid var(--line)}
+.wl li .addr{color:var(--faint);font-size:.7rem;overflow-wrap:anywhere;flex:1 1 200px;min-width:0}
+.sens{border-color:var(--amber)} .sens .ph{color:var(--amber)}
+.sens pre{color:var(--text);max-height:180px;overflow:auto}
+.cd.armed{color:var(--ink)}
+.pill.sealed{border-color:var(--ink);color:var(--ink)}
+.pill.duress{border-color:var(--amber);color:var(--amber)}
+.pill.cancelled{border-color:var(--line-2);color:var(--muted)}
+.pill.released{border-color:var(--red);color:var(--red)}
+.pill.armed{border-color:var(--ink-dim);color:var(--ink-dim)}
+.small{font-size:.74rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="brand">zpulse<span>/</span>principal</div>
+  <div class="right">
+    <span class="badge" id="backend">--</span>
+    <span class="clock" id="clock">--:--:-- UTC · --:--:-- IST</span>
+    <span class="conn" id="conn">connecting</span>
+  </div>
+</header>
+
+<section class="sec" aria-labelledby="h-vaults">
+  <div class="sh"><h2 id="h-vaults">Your vaults</h2><span class="faint" id="vcount"></span>
+    <p class="lede">Each vault is a secret encrypted on this machine, its key split among watchers, released only if your heartbeats stop. Keys never leave this machine; this page only shows public parts.</p></div>
+  <div id="empty" class="empty" hidden>
+    <h3>No vault yet</h3>
+    <p class="muted">Five steps from a secret on your laptop to a switch that holds even if you cannot.</p>
+    <ol class="steps">
+      <li><div><b>Create</b><p>Write or upload the secret below. It is encrypted here; the temp copy is deleted.</p></div></li>
+      <li><div><b>Send vault.json</b><p>Give the public <code>vault.json</code> to each watcher you trust.</p></div></li>
+      <li><div><b>Collect enrolls</b><p>Each watcher sends back an enroll file. Paste each one into the vault card.</p></div></li>
+      <li><div><b>Seal</b><p>Split the key t-of-n. Send each watcher their own packet, and only theirs.</p></div></li>
+      <li><div><b>Pulse</b><p>Press PULSE before every deadline. Miss it, and the watchers release.</p></div></li>
+    </ol>
+  </div>
+  <div class="vaults" id="vaults"></div>
+</section>
+
+<section class="sec" aria-labelledby="h-new">
+  <div class="sh"><h2 id="h-new">Create a vault</h2>
+    <p class="lede">n is the number of watchers you enroll; t of them are needed to decrypt. Deadline = last heartbeat + interval + grace.</p></div>
+  <div class="panel">
+    <div class="ph"><span>01 · init</span><span>secret stays on this machine</span></div>
+    <div class="pb">
+      <div class="fgrid">
+        <div><label class="f" for="nname">vault name</label><input type="text" id="nname" maxlength="32" placeholder="leak" spellcheck="false" autocomplete="off"><div class="hint">letters, digits, _ and - (max 32)</div></div>
+        <div><label class="f" for="nthr">threshold t</label><input type="number" class="w" id="nthr" min="1" max="255" value="2"><div class="hint">watchers needed to decrypt</div></div>
+        <div><label class="f" for="nhb">heartbeat zat</label><input type="number" class="w" id="nhb" min="1" value="20000"><div class="hint">paid to each watcher per pulse; keep ≥ 20000</div></div>
+      </div>
+      <div class="fgrid">
+        <div><label class="f" for="nint">interval (s)</label><input type="number" class="w" id="nint" min="5" value="120"></div>
+        <div><label class="f" for="ngr">grace (s)</label><input type="number" class="w" id="ngr" min="0" value="30"></div>
+        <div><label class="f">presets</label><div class="preset">
+          <button class="btn ghost sm" type="button" data-preset="120,30">demo · 2 min / 30 s</button>
+          <button class="btn ghost sm" type="button" data-preset="172800,43200">real · 48 h / 12 h</button></div></div>
+      </div>
+      <label class="f" for="nsecret">secret (text), or choose a file</label>
+      <textarea id="nsecret" spellcheck="false" placeholder="Dossier: the documents are at …"></textarea>
+      <div class="row">
+        <label class="file"><span id="nfilelbl">Choose file instead</span><input type="file" id="nfile"></label>
+        <button class="lnk" type="button" id="nfileclear" hidden>clear file</button>
+        <button class="btn" type="button" id="initbtn">Create vault</button>
+      </div>
+      <div class="msg" id="initmsg" role="status"></div>
+      <div class="out" id="initout" hidden>
+        <div class="ph"><span style="text-transform:none">vault.json · <span id="initpath"></span></span>
+          <button class="btn sm" type="button" data-copy="initjson">Copy</button></div>
+        <pre id="initjson"></pre>
+        <p class="note"><strong>Send vault.json to each watcher.</strong> It is public: ids, thresholds, your verify key, the release address. No key material.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="foot">Runs on this machine only (127.0.0.1). principal.key, duress.key and the vault key are never served by this app.</footer>
+</div>
+
+<template id="vtpl">
+  <article class="panel vc">
+    <div class="ph"><span><span class="name" data-f="name"></span> <span data-f="vid" class="faint vid"></span></span>
+      <span class="ctl"><span class="pill" data-f="stage">--</span></span></div>
+    <dl class="vmeta">
+      <div><dt>shares</dt><dd data-f="tn">--</dd></div>
+      <div><dt>interval</dt><dd data-f="interval">--</dd></div>
+      <div><dt>grace</dt><dd data-f="grace">--</dd></div>
+      <div><dt>seq</dt><dd data-f="seq">--</dd></div>
+      <div><dt>enrolled</dt><dd data-f="enc">--</dd></div>
+    </dl>
+    <div class="vbody">
+      <div>
+        <div class="cd-label" data-f="cdlabel">next deadline</div>
+        <div class="cd idle" data-f="cd">--:--</div>
+        <dl class="stats">
+          <div><dt>last pulse</dt><dd data-f="age">never</dd></div>
+          <div><dt>deadline at</dt><dd data-f="dl">--</dd></div>
+          <div class="full"><dt>watchers (local state, if any)</dt><dd data-f="wst">--</dd></div>
+          <div class="full"><dt>release address</dt><dd data-f="raddr" class="small">--</dd></div>
+        </dl>
+        <div class="sub">vault.json · send to each watcher</div>
+        <div class="row"><button class="btn ghost sm" type="button" data-a="showvault">Show vault.json</button></div>
+        <div class="out" data-f="vout" hidden>
+          <div class="ph"><span style="text-transform:none" data-f="vpath">vault.json</span><button class="btn sm" type="button" data-a="copyvault">Copy</button></div>
+          <pre data-f="vjson"></pre>
+        </div>
+      </div>
+      <div>
+        <div data-f="setup">
+          <div class="sub" style="margin-top:0">02 · enroll watchers</div>
+          <textarea class="sm" data-f="ejson" spellcheck="false" placeholder='paste a watcher enroll file: {"watcher_id": "w1", "vault_id": "…", "vk": "…", "address": "…"}'></textarea>
+          <div class="row"><button class="btn ghost" type="button" data-a="enroll">Add enroll</button>
+            <label class="file">Choose file<input type="file" accept=".json,application/json" data-f="efile"></label></div>
+          <ul class="wl" data-f="elist"></ul>
+          <div class="sub">03 · seal</div>
+          <p class="hint" data-f="sealhint"></p>
+          <div class="row"><button class="btn" type="button" data-a="seal">Seal vault</button></div>
+        </div>
+        <div data-f="live" hidden>
+          <button class="btn pulsebtn" type="button" data-a="pulse">PULSE</button>
+          <div class="msg" data-f="pmsg" role="status"></div>
+          <div class="quiet">
+            <button class="lnk am" type="button" data-a="duress">duress…</button>
+            <button class="lnk" type="button" data-a="cancel">cancel vault…</button>
+          </div>
+          <div class="confirm" data-f="dconf" hidden>
+            <p data-f="dtext"></p>
+            <div class="ctl"><button class="btn warn sm" type="button" data-a="duress-yes" data-f="dyes">Continue</button>
+              <button class="btn ghost sm" type="button" data-a="duress-no">Back</button></div>
+          </div>
+          <div class="confirm red" data-f="cconf" hidden>
+            <p><strong style="color:var(--red)">Cancel this vault?</strong> Every watcher shreds its share. The secret can never be released after this, by anyone.</p>
+            <div class="ctl"><button class="btn warn sm" type="button" data-a="cancel-yes">Yes, cancel for good</button>
+              <button class="btn ghost sm" type="button" data-a="cancel-no">Keep it armed</button></div>
+          </div>
+          <div class="sub">last 10 sent</div>
+          <table class="hist"><thead><tr><th>kind</th><th>seq</th><th>time (UTC · IST)</th><th>txid</th></tr></thead><tbody data-f="hist"></tbody></table>
+          <div class="sub">packets · one per watcher</div>
+          <p class="hint">Send each packet to its watcher only, over a private channel. It holds their share, sealed to their key.</p>
+          <ul class="wl" data-f="plist"></ul>
+          <div class="out sens" data-f="pout" hidden>
+            <div class="ph"><span style="text-transform:none" data-f="ppath">packet</span><span class="ctl"><button class="btn warn sm" type="button" data-a="copypacket">Copy packet JSON</button><button class="btn ghost sm" type="button" data-a="hidepacket">Hide</button></span></div>
+            <pre data-f="pjson"></pre>
+            <p class="note amber">Sensitive: send only to this watcher.</p>
+          </div>
+        </div>
+        <div class="msg" data-f="msg" role="status"></div>
+      </div>
+    </div>
+  </article>
+</template>
+
+<script>
+"use strict";
+const EXPLORER = "https://zexplorer.app/testnet/tx/";
+const $ = id => document.getElementById(id);
+let S = null, skew = 0, nfile = null;
+const cards = new Map();   // vault dir -> card
+
+const nowS = () => Math.floor(Date.now() / 1000) + skew;
+const pad = n => String(n).padStart(2, "0");
+function hms(s) {
+  s = Math.max(0, Math.floor(s));
+  const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+  if (d) return `${d}d ${pad(h)}:${pad(m)}:${pad(x)}`;
+  return h ? `${h}:${pad(m)}:${pad(x)}` : `${pad(m)}:${pad(x)}`;
+}
+function dur(s) {
+  if (s == null) return "--";
+  if (s < 120) return s + " s";
+  if (s < 7200) return Math.round(s / 60) + " min";
+  return (s / 3600).toFixed(s % 3600 ? 1 : 0) + " h";
+}
+function ago(ts) {
+  if (!ts) return "never";
+  const d = Math.max(0, nowS() - ts);
+  if (d < 60) return d + " s ago";
+  if (d < 3600) return Math.floor(d / 60) + " m " + (d % 60) + " s ago";
+  return Math.floor(d / 3600) + " h " + Math.floor(d % 3600 / 60) + " m ago";
+}
+function hhmmss(d) { return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`; }
+function clock(d) { return hhmmss(d) + " UTC · " + hhmmss(new Date(d.getTime() + 330 * 60000)) + " IST"; }
+function when(ts) { return ts ? clock(new Date(ts * 1000)) : "--"; }
+
+async function api(path, body) {
+  const opt = body === undefined ? { cache: "no-store" } :
+    { method: "POST", headers: { "Content-Type": "application/json", "X-Zpulse": "1" }, body: JSON.stringify(body) };
+  const r = await fetch(path, opt);
+  let j;
+  try { j = await r.json(); } catch { throw new Error(`HTTP ${r.status}`); }
+  if (!j.ok) throw new Error(j.error || `HTTP ${r.status}`);
+  return j;
+}
+function setMsg(el, text, ok) { el.textContent = text; el.className = "msg " + (ok ? "ok" : "err"); }
+
+/* ---------- copy with select-text fallback ---------- */
+function selectText(el) {
+  const sel = window.getSelection(), range = document.createRange();
+  range.selectNodeContents(el); sel.removeAllRanges(); sel.addRange(range);
+}
+function copyFrom(b, el) {
+  const text = el.textContent;
+  const done = msg => { const old = b.dataset.label || b.textContent; b.dataset.label = old; b.textContent = msg;
+    setTimeout(() => { b.textContent = old; }, 1600); };
+  const fallback = () => { selectText(el); let ok = false; try { ok = document.execCommand("copy"); } catch {}
+    done(ok ? "Copied" : "Selected: press Ctrl+C"); };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(() => done("Copied"), fallback);
+  else fallback();
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-copy]");
+  if (b) copyFrom(b, $(b.dataset.copy));
+});
+
+/* ---------- create vault ---------- */
+document.querySelectorAll("[data-preset]").forEach(b => b.addEventListener("click", () => {
+  const [i, g] = b.dataset.preset.split(","); $("nint").value = i; $("ngr").value = g;
+}));
+$("nfile").addEventListener("change", () => {
+  const f = $("nfile").files && $("nfile").files[0];
+  nfile = f || null;
+  $("nfilelbl").textContent = f ? `file: ${f.name} (${f.size} B)` : "Choose file instead";
+  $("nfileclear").hidden = !f;
+  $("nsecret").disabled = !!f;
+});
+$("nfileclear").addEventListener("click", () => {
+  nfile = null; $("nfile").value = ""; $("nfilelbl").textContent = "Choose file instead";
+  $("nfileclear").hidden = true; $("nsecret").disabled = false;
+});
+function b64(buf) {
+  const u = new Uint8Array(buf); let s = "";
+  for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+$("initbtn").addEventListener("click", async () => {
+  const b = $("initbtn"), msg = $("initmsg");
+  const body = { name: $("nname").value.trim(), threshold: +$("nthr").value, interval: +$("nint").value,
+                 grace: +$("ngr").value, heartbeat_zat: +$("nhb").value };
+  if (!/^[A-Za-z0-9_-]{1,32}$/.test(body.name)) return setMsg(msg, "Name: letters, digits, _ and -, up to 32.", false);
+  if (nfile) body.secret_b64 = b64(await nfile.arrayBuffer());
+  else if ($("nsecret").value.trim()) body.secret_text = $("nsecret").value;
+  else return setMsg(msg, "Write the secret or choose a file.", false);
+  b.disabled = true; setMsg(msg, "Encrypting and creating the vault…", true);
+  try {
+    const j = await api("/api/init", body);
+    $("initjson").textContent = JSON.stringify(j.vault, null, 1);
+    $("initpath").textContent = j.vault_path;
+    $("initout").hidden = false;
+    $("nsecret").value = ""; $("nfileclear").click();
+    setMsg(msg, `Vault ${j.name} (${j.vault_id}) created. The temp copy of the secret was deleted; delete your own plaintext copy if it should not stay on disk.`, true);
+    refresh();
+  } catch (e) { setMsg(msg, e.message, false); }
+  b.disabled = false;
+});
+
+/* ---------- vault cards ---------- */
+function makeCard(v) {
+  const el = $("vtpl").content.firstElementChild.cloneNode(true);
+  const f = {};
+  el.querySelectorAll("[data-f]").forEach(n => { f[n.dataset.f] = n; });
+  const c = { el, f, name: v.dir, dstep: 0 };
+  el.addEventListener("click", e => {
+    const b = e.target.closest("[data-a]");
+    if (b) act(c, b.dataset.a, b);
+  });
+  f.efile.addEventListener("change", async () => {
+    const x = f.efile.files && f.efile.files[0];
+    if (x) f.ejson.value = await x.text();
+    f.efile.value = "";
+  });
+  cards.set(v.dir, c);
+  return c;
+}
+
+async function post(c, path, body, msgEl, busyText) {
+  c.busy = true;
+  c.el.querySelectorAll("button[data-a]").forEach(b => b.disabled = true);
+  setMsg(msgEl, busyText, true);
+  try { return await api(path, body); }
+  catch (e) { setMsg(msgEl, e.message, false); return null; }
+  finally { c.busy = false; await refresh(); }
+}
+
+async function act(c, a, btn) {
+  const f = c.f, v = c.v;
+  if (a === "showvault") {
+    if (!f.vout.hidden) { f.vout.hidden = true; btn.textContent = "Show vault.json"; return; }
+    try { const j = await api("/api/vault?name=" + encodeURIComponent(c.name));
+      f.vjson.textContent = JSON.stringify(j.vault, null, 1); f.vpath.textContent = j.path;
+      f.vout.hidden = false; btn.textContent = "Hide vault.json"; }
+    catch (e) { setMsg(f.msg, e.message, false); }
+    return;
+  }
+  if (a === "copyvault") return copyFrom(btn, f.vjson);
+  if (a === "copypacket") return copyFrom(btn, f.pjson);
+  if (a === "hidepacket") { f.pout.hidden = true; f.pjson.textContent = ""; return; }
+  if (a.startsWith("packet:")) {
+    const wid = a.slice(7);
+    try { const j = await api(`/api/packet?name=${encodeURIComponent(c.name)}&watcher_id=${encodeURIComponent(wid)}`);
+      f.pjson.textContent = JSON.stringify(j.packet, null, 1);
+      f.ppath.textContent = `packet for ${wid} · ${j.path}`; f.pout.hidden = false;
+      copyFrom(f.pout.querySelector('[data-a="copypacket"]'), f.pjson); }
+    catch (e) { setMsg(f.msg, e.message, false); }
+    return;
+  }
+  if (a === "enroll") {
+    const txt = f.ejson.value.trim();
+    if (!txt) return setMsg(f.msg, "Paste a watcher's enroll file first.", false);
+    const j = await post(c, "/api/enroll", { name: c.name, enroll_json: txt }, f.msg, "Checking enroll file…");
+    if (j) { f.ejson.value = ""; setMsg(f.msg, j.already ? `${j.watcher_id} was already enrolled.` : `${j.watcher_id} enrolled.`, true); }
+    return;
+  }
+  if (a === "seal") {
+    const j = await post(c, "/api/seal", { name: c.name }, f.msg, "Splitting the key and sealing packets…");
+    if (j) setMsg(f.msg, `Sealed ${j.threshold}-of-${j.n}. The vault key is deleted. Send each watcher its packet (below).`, true);
+    return;
+  }
+  if (a === "pulse") {
+    const j = await post(c, "/api/pulse", { name: c.name }, f.pmsg, "Sending heartbeat…");
+    if (j) setMsg(f.pmsg, `Heartbeat #${j.seq} sent · ${when(j.ts)} · tx ${j.txid.slice(0, 16)}…`, true);
+    return;
+  }
+  if (a === "duress") { c.dstep = 1; f.cconf.hidden = true; drawDuress(c); f.dyes.focus(); return; }
+  if (a === "duress-no") { c.dstep = 0; f.dconf.hidden = true; return; }
+  if (a === "duress-yes") {
+    if (c.dstep === 1) { c.dstep = 2; drawDuress(c); f.dyes.focus(); return; }
+    c.dstep = 0; f.dconf.hidden = true;
+    const j = await post(c, "/api/pulse", { name: c.name, duress: true }, f.pmsg, "Sending heartbeat…");
+    if (j) setMsg(f.pmsg, `Heartbeat #${j.seq} sent · ${when(j.ts)} · tx ${j.txid.slice(0, 16)}… (duress)`, true);
+    return;
+  }
+  if (a === "cancel") { f.dconf.hidden = true; c.dstep = 0; f.cconf.hidden = false; return; }
+  if (a === "cancel-no") { f.cconf.hidden = true; return; }
+  if (a === "cancel-yes") {
+    f.cconf.hidden = true;
+    const j = await post(c, "/api/cancel", { name: c.name }, f.pmsg, "Sending cancel…");
+    if (j) setMsg(f.pmsg, `Cancel sent · ${when(j.ts)} · tx ${j.txid.slice(0, 16)}…`, true);
+  }
+}
+function drawDuress(c) {
+  const f = c.f;
+  f.dconf.hidden = false;
+  if (c.dstep === 1) {
+    f.dtext.innerHTML = '<strong class="amber">Duress heartbeat.</strong> On chain it looks like a normal pulse, but it is signed with the duress key: every watcher releases its share at once.';
+    f.dyes.textContent = "I understand";
+  } else {
+    f.dtext.innerHTML = '<strong class="amber">Last step.</strong> This publishes the secret. It cannot be undone.';
+    f.dyes.textContent = "Send duress heartbeat";
+  }
+}
+
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]); }
+function txHtml(txid) {
+  if (!txid) return "--";
+  const e = String(txid).replace(/[^0-9a-zA-Z:_-]/g, "");
+  const short = e.length > 24 ? `${e.slice(0, 12)}…${e.slice(-6)}` : e;
+  if (S.backend === "testnet") return `<a href="${EXPLORER}${e}" target="_blank" rel="noopener noreferrer">${short}</a>`;
+  return `<code>${short}</code>`;
+}
+
+function updateCard(c, v) {
+  const f = c.f;
+  c.v = v;
+  f.name.textContent = v.name;
+  f.vid.textContent = v.vault_id;
+  const sealed = !!v.sealed_ts;
+  const ws = Object.values(v.watchers || {});
+  const released = ws.some(w => w.status === "released");
+  let stage = sealed ? "sealed" : "enrolling", scls = sealed ? "sealed" : "";
+  if (v.cancelled) { stage = "cancelled"; scls = "cancelled"; }
+  else if (released) { stage = "released"; scls = "released"; }
+  else if (v.last_pulse && v.last_pulse.duress) { stage = "duress sent"; scls = "duress"; }
+  f.stage.textContent = stage; f.stage.className = "pill " + scls;
+  f.tn.textContent = sealed ? `${v.threshold} of ${v.n}` : `${v.threshold} of ?`;
+  f.interval.textContent = dur(v.interval_s);
+  f.grace.textContent = dur(v.grace_s);
+  f.seq.textContent = v.seq;
+  f.enc.textContent = String(v.enrolls.length);
+  f.raddr.textContent = v.release_address || "--";
+  const wk = Object.keys(v.watchers || {});
+  f.wst.innerHTML = wk.length ? wk.map(w => {
+    const s = v.watchers[w];
+    let t = `<span class="pill ${esc(s.status)}">${esc(w)} · ${esc(s.status)}</span> <span class="faint">seq ${esc(s.last_seq)}</span>`;
+    if (s.release_txid) t += ` release ${txHtml(s.release_txid)}`;
+    return `<div>${t}</div>`;
+  }).join("") : '<span class="faint">no watcher state on this machine (watchers run elsewhere)</span>';
+  f.setup.hidden = sealed;
+  f.live.hidden = !sealed;
+  if (!sealed) {
+    f.elist.innerHTML = v.enrolls.length ? v.enrolls.map(e =>
+      `<li><span><strong>${esc(e.watcher_id)}</strong>${e.ok ? "" : ' <span class="amber">wrong vault</span>'}</span><span class="addr">${esc(e.address)}</span></li>`).join("")
+      : '<li class="faint">no watchers enrolled yet</li>';
+    const k = v.enrolls.length, t = v.threshold;
+    f.sealhint.textContent = k >= t ? `${k} enrolled, threshold ${t}: ready to seal as ${t}-of-${k}. After sealing no one else can join.`
+      : `${k} of at least ${t} watchers enrolled. Seal unlocks at ${t}.`;
+    if (!c.busy) c.el.querySelector('[data-a="seal"]').disabled = k < t;
+  } else {
+    const rows = v.pulses.slice().reverse().map(p => {
+      const kind = p.kind === "cancel" ? '<span class="muted">cancel</span>' : p.duress ? '<span class="amber">duress</span>' : "pulse";
+      return `<tr><td>${kind}</td><td>${p.seq == null ? "--" : esc(p.seq)}</td><td>${esc(when(p.ts))}</td><td>${txHtml(p.txid)}</td></tr>`;
+    }).join("");
+    f.hist.innerHTML = rows || '<tr><td colspan="4" class="faint">nothing sent yet: press PULSE to arm the clock</td></tr>';
+    const plist = v.packets.map(w => `<li><span><strong>${esc(w)}</strong> <span class="faint">packets/${esc(w)}.json</span></span>
+      <button class="btn warn sm" type="button" data-a="packet:${esc(w)}">Copy packet JSON</button></li>`).join("");
+    if (f.plist.dataset.k !== plist) { f.plist.innerHTML = plist || '<li class="faint">no packets</li>'; f.plist.dataset.k = plist; }
+    c.el.querySelector('[data-a="pulse"]').hidden = !!v.cancelled;
+    c.el.querySelector(".quiet").hidden = !!v.cancelled;
+    if (v.cancelled) { f.dconf.hidden = true; f.cconf.hidden = true; }
+    if (!c.busy) c.el.querySelectorAll("button[data-a]").forEach(b => {
+      if (/^(pulse|duress|cancel|duress-yes|cancel-yes)$/.test(b.dataset.a)) b.disabled = !!v.cancelled;
+      else b.disabled = false;
+    });
+  }
+  if (!c.busy && !sealed) c.el.querySelectorAll('button[data-a]:not([data-a="seal"])').forEach(b => b.disabled = false);
+  tickCard(c);
+}
+
+function tickCard(c) {
+  const v = c.v, f = c.f;
+  if (!v) return;
+  const ref = v.last_pulse ? v.last_pulse.ts : v.sealed_ts;
+  f.age.textContent = v.last_pulse ? ago(v.last_pulse.ts) : "never";
+  let cls = "cd idle", txt = "--:--", label = "next deadline";
+  const ws = Object.values(v.watchers || {});
+  if (!v.sealed_ts) { label = "not sealed yet: no clock running"; f.dl.textContent = "--"; }
+  else if (v.cancelled) { cls = "cd cancelled word"; txt = "CANCELLED"; label = "cancel sent: shares shredded"; f.dl.textContent = "--"; }
+  else if (ws.some(w => w.status === "released")) { cls = "cd released word"; txt = "RELEASED"; label = "a watcher posted its share"; }
+  else {
+    const dl = ref + v.interval_s + v.grace_s, d = dl - nowS();
+    f.dl.textContent = when(dl);
+    if (d <= 0) { cls = "cd late"; txt = "-" + hms(-d); label = "deadline passed: watchers release"; }
+    else { cls = d < 0.1 * v.interval_s ? "cd warn" : "cd"; txt = hms(d);
+      label = v.last_pulse ? "deadline in (last pulse + interval + grace)" : "deadline in, counted from seal: pulse now"; }
+  }
+  if (f.cd.className !== cls) f.cd.className = cls;
+  if (f.cd.textContent !== txt) f.cd.textContent = txt;
+  if (f.cdlabel.textContent !== label) f.cdlabel.textContent = label;
+}
+
+function render() {
+  $("backend").textContent = S.backend;
+  $("backend").className = "badge " + S.backend;
+  const vs = S.vaults;
+  $("empty").hidden = vs.length > 0;
+  $("vcount").textContent = vs.length ? `${vs.length} vault${vs.length > 1 ? "s" : ""}` : "";
+  const host = $("vaults"), seen = new Set();
+  vs.forEach(v => {
+    seen.add(v.dir);
+    const c = cards.get(v.dir) || makeCard(v);
+    if (!c.el.isConnected) host.appendChild(c.el);
+    updateCard(c, v);
+  });
+  for (const [k, c] of cards) if (!seen.has(k)) { c.el.remove(); cards.delete(k); }
+}
+
+async function refresh() {
+  try {
+    S = await api("/api/state");
+    skew = S.now - Math.floor(Date.now() / 1000);
+    $("conn").textContent = "live"; $("conn").className = "conn";
+    render();
+  } catch (e) {
+    $("conn").textContent = "server unreachable"; $("conn").className = "conn bad";
+  }
+}
+function tick() {
+  $("clock").textContent = clock(new Date(nowS() * 1000));
+  for (const c of cards.values()) tickCard(c);
+}
+refresh(); tick();
+setInterval(refresh, 3000);
+setInterval(tick, 250);
+</script>
+</body>
+</html>

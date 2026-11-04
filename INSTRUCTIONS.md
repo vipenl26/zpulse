@@ -917,3 +917,11 @@ python3 netviz/serve.py --port 8792 --data ./data [--server testnet.zec.rocks:44
 Open http://127.0.0.1:8792/. The server polls lightwalletd every 5 s over gRPC (read-only calls: GetLightdInfo, GetLatestBlock, GetBlockRange, GetTransaction, GetMempoolTx) and the page polls the server every 3 s. You see the tip height, seconds since the last block, the average block interval, a stream of the last 40 blocks with stacked bars for Ironwood / Orchard / Sapling / transparent activity, the mempool, and a "zpulse transactions" list: every heartbeat and release txid found in `data/` (and any you add via the input or `--txids`), with its block and a confirmation counter. Block times are shown in UTC and IST.
 
 If the page says "connecting to lightwalletd", the server could not reach `testnet.zec.rocks:443`; the last good snapshot stays on screen. On macOS the server sets `GRPC_DNS_RESOLVER=native` for you because gRPC's own resolver fails there.
+
+### 11.3 Principal app (for the journalist)
+
+```bash
+python3 principalapp/serve.py --backend testnet --data ./data --port 8793
+```
+
+Open http://127.0.0.1:8793/. Create a vault from a pasted secret or an uploaded file (threshold, interval, grace, heartbeat zat; presets for a 2-minute demo and a real 48-hour switch), paste each watcher's enroll JSON, press Seal when enough have enrolled, then copy each watcher's packet to send to that watcher only. After sealing the card shows a big PULSE button, a countdown to the deadline, the last 10 things sent, watcher states, and quiet duress and cancel links behind inline confirmations. The secret is written to a temporary file inside the data directory only for the moment `init` needs it, then deleted. No key file is ever served over HTTP. Same localhost-only guards as the watcher app.
