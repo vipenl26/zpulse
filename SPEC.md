@@ -55,8 +55,8 @@ zpulse/
 ```
 
 Run everything from `/Users/vomni/Documents/zhackathon/zpulse` as
-`python3 -m zpulse.principal ...` etc. `wallet/zwallet.py` lives one level up
-(`../wallet/zwallet.py`); chain.py imports it via sys.path.
+`python3 -m zpulse.principal ...` etc. `wallet/zwallet.py` is bundled inside
+the repo (`zpulse/wallet/zwallet.py`); chain.py imports it via sys.path.
 
 ## Agent A: `zpulse/crypto.py`, `shamir.py`, `memo.py`, `chain.py`
 

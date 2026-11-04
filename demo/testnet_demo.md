@@ -18,7 +18,7 @@ Node names on testnet:
 ```bash
 cd /Users/vomni/Documents/zhackathon/zpulse
 export ZPULSE_BACKEND=testnet
-python3 wallet/zwallet.py balance principal     # needs shielded TAZ: n * heartbeat_zat * pulses + fees
+python3 wallet/zwallet.py principal balance     # needs shielded TAZ: n * heartbeat_zat * pulses + fees
 ```
 
 ## 1. Create the vault (interval 10 min, grace 5 min)
@@ -53,7 +53,7 @@ by the vault_id inside the memo (devtool does not always print the receiving add
 ```bash
 python3 -m zpulse.principal pulse --name leak       # -> {"txid": ..., "seq": 1, "ts": ...}
 ```
-Show it: `https://testnet.cipherscan.app/tx/<txid>` (amounts/memos are shielded: only the tx is visible).
+Show it: `https://testnet.zecblock.com/tx/<txid>` (amounts/memos are shielded: only the tx is visible).
 The first heartbeat also funds each watcher's later release tx (1000 zat + fee). Watcher
 wallets need the heartbeat note to be confirmed/spendable before they can release.
 

@@ -57,9 +57,17 @@ There is no recipient. **The release goes to the world.** No smart contract, no 
 - **Watchers never talk to each other and run no server.** Each one decides alone, from chain data.
 - Pure Python, testnet, runs on a laptop.
 
+## Website and visualizer
+
+- `site/index.html`: the landing page (what it is, how it works, quotes, full instructions, testnet evidence).
+- `site/viz.html`: an animated visualizer with four scenarios: heartbeat reaches every watcher; two watchers down, nothing lost; pulse stops, 5 of 5 release; pulse stops, only 3 of 5 are up.
+- `INSTRUCTIONS.md`: the complete user manual, every command and flag, derived from the code.
+
+Serve them locally with `python3 -m http.server 8790 --directory site` and open http://localhost:8790/.
+
 ## Stack
 
-Python 3.12, `cryptography` (AES-256-GCM), `pynacl` (Ed25519 signatures, SealedBox share delivery), pure-Python Shamir over GF(2^8), [`zcash-devtool`](https://github.com/zcash/zcash-devtool) (Rust, librustzcash light client) driven by subprocess, lightwalletd at `testnet.zec.rocks`, explorer `https://testnet.cipherscan.app/tx/<txid>`.
+Python 3.12, `cryptography` (AES-256-GCM), `pynacl` (Ed25519 signatures, SealedBox share delivery), pure-Python Shamir over GF(2^8), [`zcash-devtool`](https://github.com/zcash/zcash-devtool) (Rust, librustzcash light client) driven by subprocess, lightwalletd at `testnet.zec.rocks`, explorer `https://testnet.zecblock.com/tx/<txid>`.
 
 Memo formats (UTF-8, at most 512 bytes):
 
@@ -109,7 +117,7 @@ python3 -m zpulse.reveal --vault data/vaults/leak/vault.json --watch   # anyone 
    - Valar faucet, 0.125 TAZ per IP per day: `python3 wallet/faucet.py <unified address>`
    - Jino Labs faucet (browser proof-of-work, 0.1 TAZ per address per day): https://zcashfaucet.jinolabs.xyz
    Faucet payouts arrive shielded; if you receive transparent funds instead, shield them with `python3 wallet/zwallet.py principal shield`. Check with `python3 wallet/zwallet.py principal sync`.
-4. Run the same flow as above with `ZPULSE_BACKEND=testnet` and demo timings `--interval 120 --grace 60`. Every heartbeat and share tx shows up at `https://testnet.cipherscan.app/tx/<txid>`, and the dashboard links to them.
+4. Run the same flow as above with `ZPULSE_BACKEND=testnet` and timings that worked live: `--interval 300 --grace 120 --heartbeat-zat 20000`, watchers with `--poll 45`. Every heartbeat and share tx shows up at `https://testnet.cipherscan.app/tx/<txid>`, and the dashboard links to them.
 
 Testnet blocks come about every 75 s, so allow a block or two after each pulse before watchers see it.
 

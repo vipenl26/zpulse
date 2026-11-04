@@ -21,7 +21,8 @@ class Paths:
 
     @property
     def ledger(self) -> Path:
-        return self.data / "mockchain.json"
+        env = os.environ.get("ZPULSE_MOCK_LEDGER")  # same override the dashboard honours
+        return Path(env) if env else self.data / "mockchain.json"
 
     def vault_dir(self, name: str) -> Path:
         return self.data / "vaults" / name

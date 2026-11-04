@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>zpulse visualizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#070a08;
+  --bg-2:#0b100c;
+  --panel:#0d140f;
+  --line:#1c2a20;
+  --line-2:#26392b;
+  --ink:#4dff8f;
+  --ink-strong:#8dffb6;
+  --ink-dim:#2fbf68;
+  --ink-deep:#14562e;
+  --glow:rgba(77,255,143,.35);
+  --text:#c9dccd;
+  --muted:#7f9686;
+  --faint:#4d6153;
+  --off:#36403a;
+  --off-text:#5f6d64;
+  --amber:#ffb547;
+  --amber-dim:#c98a2a;
+  --amber-deep:#4a3410;
+  --amber-glow:rgba(255,181,71,.35);
+  --scan:rgba(0,0,0,.22);
+  --font-display:"Share Tech Mono","VT323","Courier New",ui-monospace,monospace;
+  --font-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace;
+}
+body{background:var(--bg);color:var(--text)}
+.zv{position:relative;box-sizing:border-box;max-width:1140px;margin:0 auto;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-block:28px 48px;font-family:var(--font-mono);font-size:15px;line-height:1.55;color:var(--text);
+  background:var(--bg);font-variant-numeric:tabular-nums;overflow-x:hidden}
+.zv *,.zv *::before,.zv *::after{box-sizing:border-box}
+.zv-scan{position:absolute;inset:0;pointer-events:none;z-index:3;
+  background:repeating-linear-gradient(to bottom,transparent 0 2px,var(--scan) 2px 3px);opacity:.28}
+@media (prefers-reduced-motion: reduce){.zv-scan{display:none}}
+.zv a{color:var(--ink)}
+.zv-top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px;margin-bottom:6px}
+.zv-brand{font-family:var(--font-display);color:var(--ink);font-size:15px;letter-spacing:.12em;text-decoration:none}
+.zv-brand:hover{color:var(--ink-strong)}
+.zv-kicker{color:var(--muted);font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.zv h1{font-family:var(--font-display);font-weight:400;color:var(--ink);font-size:clamp(28px,5vw,44px);line-height:1.1;margin:14px 0 8px;text-shadow:0 0 18px var(--glow)}
+.zv-lede{color:var(--muted);max-width:72ch;margin:0 0 22px}
+.zv-lede b{color:var(--text);font-weight:500}
+.zv-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px;padding:0}
+.zv-tab{font:inherit;font-size:14px;color:var(--muted);background:var(--bg-2);border:1px solid var(--line-2);border-radius:2px;padding:9px 14px;cursor:pointer;text-align:left;line-height:1.3}
+.zv-tab .n{font-family:var(--font-display);color:var(--ink-dim);margin-right:8px}
+.zv-tab:hover{color:var(--text);border-color:var(--ink-dim)}
+.zv-tab[aria-selected="true"]{color:var(--bg);background:var(--ink);border-color:var(--ink)}
+.zv-tab[aria-selected="true"] .n{color:var(--bg)}
+.zv button:focus-visible,.zv a:focus-visible{outline:2px solid var(--ink-strong);outline-offset:3px}
+.zv-stage{border:1px solid var(--line-2);background:var(--panel);border-radius:2px;position:relative}
+.zv-stagehead{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 16px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px;color:var(--muted)}
+.zv-stagehead strong{font-family:var(--font-display);font-weight:400;color:var(--ink);font-size:17px;letter-spacing:.04em}
+.zv-svg{display:block;width:100%;height:auto}
+.zv-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:10px 14px;border-top:1px solid var(--line)}
+.zv-btn{font:inherit;font-size:14px;color:var(--ink);background:transparent;border:1px solid var(--ink-dim);border-radius:2px;padding:6px 12px;cursor:pointer;min-width:44px;min-height:36px}
+.zv-btn:hover{background:var(--ink-deep)}
+.zv-speed{display:flex;gap:4px;align-items:center;color:var(--muted);font-size:13px}
+.zv-speed .zv-btn{padding:6px 9px;color:var(--muted);border-color:var(--line-2)}
+.zv-speed .zv-btn[aria-pressed="true"]{color:var(--bg);background:var(--ink);border-color:var(--ink)}
+.zv-prog{flex:1 1 140px;height:4px;background:var(--line);position:relative;min-width:120px}
+.zv-prog i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--ink-dim)}
+.zv-clock{color:var(--muted);font-size:13px;white-space:nowrap}
+.zv-cap{margin:14px 0 0;padding:14px 16px;border-left:3px solid var(--ink);background:var(--bg-2);min-height:5.4em;font-size:16px;color:var(--text)}
+.zv-cap.warn{border-left-color:var(--amber)}
+.zv-cap .tag{display:block;font-family:var(--font-display);color:var(--ink-dim);font-size:13px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+.zv-cap.warn .tag{color:var(--amber-dim)}
+.zv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:22px}
+.zv-box{border:1px solid var(--line);padding:14px 16px;background:var(--bg-2)}
+.zv-box h2{font-family:var(--font-display);font-weight:400;color:var(--ink);font-size:18px;margin:0 0 10px;letter-spacing:.04em}
+.zv-legend{list-style:none;margin:0;padding:0;display:grid;gap:8px;font-size:13.5px;color:var(--muted)}
+.zv-legend li{display:flex;align-items:center;gap:10px}
+.zv-legend svg{flex:none;width:46px;height:22px}
+.zv-box p{margin:0 0 8px;color:var(--muted);font-size:13.5px}
+.zv-box p:last-child{margin-bottom:0}
+.zv-box code{color:var(--ink);font-family:var(--font-mono)}
+.zv-foot{margin-top:22px;color:var(--faint);font-size:12.5px}
+/* svg */
+.zv-svg text{font-family:var(--font-mono);fill:var(--text)}
+.zv-svg .disp{font-family:var(--font-display)}
+.zv-svg .lbl{fill:var(--muted);font-size:13px;letter-spacing:.04em}
+.zv-svg .ttl{fill:var(--ink);font-size:19px;letter-spacing:.08em}
+.zv-svg .band{fill:var(--bg-2);stroke:var(--line-2)}
+.zv-svg .blk{fill:var(--bg);stroke:var(--ink-dim);stroke-width:1.2}
+.zv-svg .blkh{fill:var(--muted);font-size:11.5px}
+.zv-svg .mem-hb{fill:var(--ink-deep);stroke:var(--ink)}
+.zv-svg .mem-sh{fill:var(--amber-deep);stroke:var(--amber)}
+.zv-svg .memt{font-size:11px;fill:var(--ink-strong)}
+.zv-svg .memt.sh{fill:var(--amber)}
+.zv-svg .pool{fill:none;stroke:var(--faint);stroke-dasharray:4 4}
+.zv-svg .env rect{stroke-width:1.4}
+.zv-svg .env.hb rect,.zv-svg .env.tx rect{fill:var(--ink-deep);stroke:var(--ink)}
+.zv-svg .env.replay rect{fill:var(--bg);stroke:var(--ink);stroke-dasharray:3 2}
+.zv-svg .env.sh rect,.zv-svg .env.shtx rect{fill:var(--amber-deep);stroke:var(--amber)}
+.zv-svg .env path{fill:none;stroke-width:1;opacity:.7}
+.zv-svg .env.hb path,.zv-svg .env.tx path,.zv-svg .env.replay path{stroke:var(--ink)}
+.zv-svg .env.sh path,.zv-svg .env.shtx path{stroke:var(--amber)}
+.zv-svg .env text{font-size:11.5px;fill:var(--ink-strong)}
+.zv-svg .env.sh text,.zv-svg .env.shtx text{fill:var(--amber)}
+.zv-svg .ecg{fill:none;stroke:var(--ink);stroke-width:2;stroke-linejoin:round}
+.zv-svg .ecg.dead{stroke:var(--amber)}
+.zv-svg .ecgbase{stroke:var(--line-2);stroke-dasharray:2 4}
+.zv-svg .lap{fill:var(--bg);stroke:var(--ink);stroke-width:1.6}
+.zv-svg .lapscr{fill:var(--ink-deep)}
+.zv-svg .dark .lap{stroke:var(--off)}
+.zv-svg .dark .lapscr{fill:var(--bg-2)}
+.zv-svg .glow{fill:var(--glow)}
+.zv-svg .track{fill:none;stroke:var(--line-2);stroke-width:6}
+.zv-svg .ring{fill:none;stroke:var(--ink);stroke-width:6;stroke-linecap:butt}
+.zv-svg .ring.low{stroke:var(--amber)}
+.zv-svg .wcore{fill:var(--bg);stroke:var(--line-2)}
+.zv-svg .wname{font-family:var(--font-display);font-size:24px;fill:var(--ink)}
+.zv-svg .wrole{font-size:12.5px;fill:var(--muted)}
+.zv-svg .wstat{font-size:13px;fill:var(--text)}
+.zv-svg .wstat.warn{fill:var(--amber)}
+.zv-svg .wallet{fill:var(--bg-2);stroke:var(--line-2)}
+.zv-svg .wallt{font-size:11.5px;fill:var(--muted)}
+.zv-svg .w.off .wname,.zv-svg .w.off .wstat{fill:var(--off-text)}
+.zv-svg .w.off .track{stroke:var(--off);stroke-dasharray:3 5}
+.zv-svg .w.off .ring{stroke:none}
+.zv-svg .w.off .wcore{stroke:var(--off)}
+.zv-svg .w.rel .wcore{stroke:var(--amber)}
+.zv-svg .w.rel .wname{fill:var(--amber)}
+.zv-svg .xmark{stroke:var(--off-text);stroke-width:2}
+.zv-svg .boxr{fill:var(--bg-2);stroke:var(--line-2)}
+.zv-svg .boxr.hot{stroke:var(--amber)}
+.zv-svg .boxv.open{stroke:var(--ink)}
+.zv-svg .slot{fill:none;stroke:var(--line-2);stroke-dasharray:3 3}
+.zv-svg .chip{fill:var(--amber-deep);stroke:var(--amber)}
+.zv-svg .chipt{font-size:11.5px;fill:var(--amber)}
+.zv-svg .cnt{font-family:var(--font-display);font-size:38px;fill:var(--muted)}
+.zv-svg .cnt.hot{fill:var(--amber)}
+.zv-svg .cnt.ok{fill:var(--ink)}
+.zv-svg .garb{font-size:13px;fill:var(--faint)}
+.zv-svg .doss{font-size:14.5px;fill:var(--ink-strong)}
+.zv-svg .lock{fill:none;stroke:var(--muted);stroke-width:2.4}
+.zv-svg .lockb{fill:var(--bg);stroke:var(--muted);stroke-width:2}
+.zv-svg .open .lock,.zv-svg .open .lockb{stroke:var(--ink)}
+.zv-svg .frag{fill:var(--amber-deep);stroke:var(--amber)}
+.zv-svg .key{fill:none;stroke:var(--ink);stroke-width:3}
+.zv-svg .amb{fill:var(--amber)}
+.zv-svg .grn{fill:var(--ink)}
+.zv-svg .conn{stroke:var(--line-2);stroke-dasharray:2 5;fill:none}
+</style>
+</head>
+<body>
+<div class="zv" id="zv">
+  <div class="zv-scan" aria-hidden="true"></div>
+  <div class="zv-top">
+    <a class="zv-brand" href="index.html">&gt; zpulse</a>
+    <span class="zv-kicker">dead man's switch on zcash / visualizer</span>
+  </div>
+  <h1>Four ways the pulse plays out</h1>
+  <p class="zv-lede">A principal holds a dossier encrypted with key <b>K</b>. K is split into <b>5 Shamir shares, threshold 3</b>, one sealed to each watcher. Heartbeats and shares travel only as <b>shielded Zcash memos</b>. No server, no relay, and the watchers never talk to each other.</p>
+
+  <div class="zv-tabs" role="tablist" aria-label="Scenario">
+    <button class="zv-tab" role="tab" id="zv-tab-heartbeat" data-s="heartbeat" aria-controls="zv-stage" aria-selected="true"><span class="n">01</span>Heartbeat reaches every watcher</button>
+    <button class="zv-tab" role="tab" id="zv-tab-two-down" data-s="two-down" aria-controls="zv-stage" aria-selected="false"><span class="n">02</span>Two watchers down, nothing lost</button>
+    <button class="zv-tab" role="tab" id="zv-tab-five-release" data-s="five-release" aria-controls="zv-stage" aria-selected="false"><span class="n">03</span>Pulse stops, 5 of 5 release</button>
+    <button class="zv-tab" role="tab" id="zv-tab-three-release" data-s="three-release" aria-controls="zv-stage" aria-selected="false"><span class="n">04</span>Pulse stops, only 3 of 5 up</button>
+  </div>
+
+  <section class="zv-stage" id="zv-stage" role="tabpanel" aria-labelledby="zv-tab-heartbeat">
+    <div class="zv-stagehead"><strong id="zv-stitle">Heartbeat reaches every watcher</strong><span id="zv-ssub">demo clock: 6 s between heartbeats (48 h in real life)</span></div>
+    <svg class="zv-svg" id="zv-svg" viewBox="0 0 1000 660" role="img" aria-labelledby="zv-svgdesc">
+      <desc id="zv-svgdesc">Diagram: the principal's laptop at the top sends heartbeat transactions to the Zcash chain. Five watchers below read the chain with their own keys. At the bottom, a public release address collects shares and the vault opens for the world once 3 shares are visible.</desc>
+      <g id="zv-static"></g>
+      <g id="zv-dyn"></g>
+    </svg>
+    <div class="zv-bar">
+      <button class="zv-btn" id="zv-play" type="button" aria-label="Pause">Pause</button>
+      <button class="zv-btn" id="zv-restart" type="button">Restart</button>
+      <div class="zv-speed" role="group" aria-label="Speed">
+        <span>speed</span>
+        <button class="zv-btn" type="button" data-speed="1" aria-pressed="true">1x</button>
+        <button class="zv-btn" type="button" data-speed="2" aria-pressed="false">2x</button>
+        <button class="zv-btn" type="button" data-speed="4" aria-pressed="false">4x</button>
+      </div>
+      <div class="zv-prog" aria-hidden="true"><i id="zv-prog"></i></div>
+      <span class="zv-clock" id="zv-clock">t = 0.0 s</span>
+    </div>
+  </section>
+  <div class="zv-cap" id="zv-cap" aria-live="polite"><span class="tag" id="zv-captag">now</span><span id="zv-captext"></span></div>
+
+  <div class="zv-grid">
+    <div class="zv-box">
+      <h2>Legend</h2>
+      <ul class="zv-legend">
+        <li><svg viewBox="0 0 46 22" aria-hidden="true"><rect x="2" y="3" width="42" height="16" fill="var(--ink-deep)" stroke="var(--ink)"/><path d="M2 3 L23 12 L44 3" fill="none" stroke="var(--ink)"/></svg>heartbeat memo <code>ZP1 HB</code>, signed by the principal</li>
+        <li><svg viewBox="0 0 46 22" aria-hidden="true"><rect x="2" y="3" width="42" height="16" fill="var(--amber-deep)" stroke="var(--amber)"/><path d="M2 3 L23 12 L44 3" fill="none" stroke="var(--amber)"/></svg>share memo <code>ZP1 SH</code>, one Shamir share</li>
+        <li><svg viewBox="0 0 46 22" aria-hidden="true"><rect x="4" y="2" width="38" height="18" fill="var(--bg)" stroke="var(--ink-dim)"/><line x1="8" y1="8" x2="30" y2="8" stroke="var(--muted)"/></svg>Zcash block (shielded pool)</li>
+        <li><svg viewBox="0 0 46 22" aria-hidden="true"><circle cx="23" cy="11" r="8" fill="none" stroke="var(--line-2)" stroke-width="3"/><path d="M23 3 A8 8 0 1 1 15 11" fill="none" stroke="var(--ink)" stroke-width="3"/></svg>watcher deadline ring; amber when nearly empty</li>
+        <li><svg viewBox="0 0 46 22" aria-hidden="true"><circle cx="23" cy="11" r="8" fill="none" stroke="var(--off)" stroke-width="3" stroke-dasharray="3 4"/></svg>watcher offline or seized</li>
+      </ul>
+    </div>
+    <div class="zv-box">
+      <h2>Rules the animation follows</h2>
+      <p>A heartbeat is <code>one</code> transaction with five outputs. Each watcher sees only its own output, on an address made for this vault.</p>
+      <p>A watcher's deadline is the last heartbeat's block time plus interval plus grace. Past it, the watcher posts its share to the release address, alone.</p>
+      <p>The release address's viewing key is public. Any 3 shares rebuild K. One or two shares reveal nothing.</p>
+    </div>
+  </div>
+  <p class="zv-foot">Timeline is deterministic: Restart replays the exact same sequence. Times are demo seconds. Link a scenario with #heartbeat, #two-down, #five-release or #three-release.</p>
+</div>
+<script>
+(function(){
+  "use strict";
+  var NS = "http://www.w3.org/2000/svg";
+  var root = document.getElementById("zv");
+  if (!root) return;
+  function $(id){ return document.getElementById(id); }
+  function el(tag, attrs, parent){
+    var e = document.createElementNS(NS, tag);
+    if (attrs) for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function tx(parent, x, y, s, cls, anchor){
+    var e = el("text", {x:x, y:y}, parent);
+    if (cls) e.setAttribute("class", cls);
+    if (anchor) e.setAttribute("text-anchor", anchor);
+    e.textContent = s;
+    return e;
+  }
+  function clamp(v,a,b){ return v < a ? a : v > b ? b : v; }
+  function ease(p){ p = clamp(p,0,1); return p < .5 ? 2*p*p : 1 - Math.pow(-2*p+2,2)/2; }
+  function lerp(a,b,p){ return a + (b-a)*p; }
+  function quad(a,c,b,p){ var q = 1-p; return [q*q*a[0]+2*q*p*c[0]+p*p*b[0], q*q*a[1]+2*q*p*c[1]+p*p*b[1]]; }
+  function setT(e, x, y){ e.setAttribute("transform", "translate(" + x.toFixed(1) + "," + y.toFixed(1) + ")"); }
+
+  /* ---------- geometry ---------- */
+  var B0 = 2, BSTEP = 2, FLY = 1, FAN0 = .3, FAN = 1, VIS = 8;
+  var WX = [110, 305, 500, 695, 890], WY = 384;
+  var ROLES = ["NGO", "lawyer", "editor", "friend abroad", "archivist"];
+  var PX = 800, PY = 100;
+  var MEM = [942, 209];
+  var BY = 172, BW = 100, BH = 74;
+  var SLOTX = function(j){ return 50 + j*84; }, SLOTY = 568;
+  var KEYPT = [922, 612];
+  var C = 2*Math.PI*32;
+  var DOSS = ["Dossier #7: the minister's offshore", "accounts are at Bank X, ledger p.42."];
+  var GARB = ["9f 3a e0 71 c4 0b 5d 88 a2 17 fe 6c 30 d9 4e 21", "c8 55 0a 9b 7e e3 12 f0 4d 6a b1 08 93 2c 7f e5"];
+
+  /* ---------- scenarios ---------- */
+  var SC = {
+    "heartbeat": {
+      title: "Heartbeat reaches every watcher",
+      sub: "demo clock: 6 s between heartbeats (48 h in real life)",
+      hbs: [1, 7, 13, 19, 25], D: [9, 9, 9, 9, 9], end: 31, down: {}, dark: null, release: false
+    },
+    "two-down": {
+      title: "Two watchers are down, nothing is lost",
+      sub: "w2 and w4 offline until t = 12.4 s",
+      hbs: [1, 7, 13, 19], D: [9, 9, 9, 9, 9], end: 26, down: {1: [0, 12.4], 3: [0, 12.4]}, dark: null, release: false
+    },
+    "five-release": {
+      title: "Pulse stops, 5 of 5 release",
+      sub: "threshold t = 3 of n = 5",
+      hbs: [1, 7], D: [9.6, 13.6, 7.6, 15.6, 11.6], end: 35, down: {}, dark: 9.2, release: true
+    },
+    "three-release": {
+      title: "Pulse stops, only 3 of 5 are up",
+      sub: "w2 and w4 seized; threshold t = 3 of n = 5",
+      hbs: [1, 7], D: [9.6, 13.6, 7.6, 15.6, 11.6], end: 32, down: {1: [0, 1e9], 3: [0, 1e9]}, dark: 9.2, release: true
+    }
+  };
+  var ORDER = ["heartbeat", "two-down", "five-release", "three-release"];
+
+  function blockAfter(t){ return Math.max(0, Math.ceil((t - B0)/BSTEP - 1e-9)); }
+
+  function build(key){
+    var sc = SC[key];
+    var P = {key:key, sc:sc, blocks:[], flights:[], refills:[[],[],[],[],[]], z:[null,null,null,null,null],
+             sync:[null,null,null,null,null], shares:[], T3:null, caps:[]};
+    var nB = Math.ceil((sc.end + 12 - B0)/BSTEP) + 1;
+    for (var k = 0; k < nB; k++) P.blocks.push({t: B0 + k*BSTEP, memos: []});
+    function online(i, t){ var d = sc.down[i]; return !d || t < d[0] || t >= d[1]; }
+    var missed = [[],[],[],[],[]];
+    sc.hbs.forEach(function(s, j){
+      var k = blockAfter(s + FLY), b = P.blocks[k].t, seq = j + 1;
+      P.blocks[k].memos.push({sh:false, label:"ZP1 HB " + seq + " x5"});
+      P.flights.push({kind:"tx", label:"HB " + seq + " x5", w:76, t0:s, t1:s + FLY, tw:b, k:k});
+      for (var i = 0; i < 5; i++){
+        if (online(i, b + FAN0)){
+          var ta = b + FAN0 + FAN;
+          P.flights.push({kind:"hb", label:"HB " + seq, w:52, t0:b + FAN0, t1:ta, k:k, wi:i});
+          P.refills[i].push({t:ta, to:ta});
+        } else missed[i].push({k:k, b:b, seq:seq});
+      }
+    });
+    for (var i = 0; i < 5; i++){
+      var d = sc.down[i];
+      if (d && d[1] < 1e8 && missed[i].length){
+        var last = 0;
+        missed[i].forEach(function(m, q){
+          var t0 = d[1] + .3 + q*.7, ta = t0 + .9;
+          P.flights.push({kind:"replay", label:"HB " + m.seq, w:52, t0:t0, t1:ta, k:m.k, wi:i});
+          P.refills[i].push({t:ta, to:m.b});
+          last = ta;
+        });
+        P.sync[i] = [d[1], last, missed[i].length];
+      }
+      P.refills[i].sort(function(a,b){ return a.t - b.t; });
+    }
+    if (sc.release){
+      for (var w = 0; w < 5; w++){
+        var dd = sc.down[w];
+        if (dd && dd[1] > 1e8) continue;
+        var rf = P.refills[w], lastTo = rf.length ? rf[rf.length-1].to : 0;
+        var z = lastTo + sc.D[w];
+        P.z[w] = z;
+        var k2 = blockAfter(z + FLY), b2 = P.blocks[k2].t;
+        P.blocks[k2].memos.push({sh:true, label:"ZP1 SH w" + (w+1)});
+        P.flights.push({kind:"shtx", label:"SH w" + (w+1), w:58, t0:z, t1:z + FLY, tw:b2, wi:w});
+        P.shares.push({wi:w, k:k2, t0:b2 + FAN0, ta:b2 + FAN0 + FAN, z:z});
+      }
+      P.shares.sort(function(a,b){ return a.ta - b.ta; });
+      P.shares.forEach(function(s, j){
+        s.slot = j;
+        P.flights.push({kind:"sh", label:"SH w" + (s.wi+1), w:58, t0:s.t0, t1:s.ta, k:s.k, slot:j});
+      });
+      if (P.shares.length >= 3) P.T3 = P.shares[2].ta;
+    }
+    P.caps = captions(P);
+    return P;
+  }
+
+  function wn(i){ return "w" + (i+1); }
+
+  function captions(P){
+    var c = [], k = P.key;
+    function add(t, s, warn, tag){ c.push({t:t, s:s, warn:!!warn, tag:tag || ""}); }
+    if (k === "heartbeat"){
+      add(0, "The principal's key K is split into 5 shares, one sealed to each watcher. Every 6 s (48 h in real life) the principal sends a heartbeat.", 0, "armed");
+      add(1, "Heartbeat 1 leaves the laptop: ONE shielded transaction with 5 outputs, one per watcher, memo ZP1 HB 1.", 0, "heartbeat");
+      add(2, "It is mined into a Zcash block. To everyone else it is an encrypted note in the shielded pool.", 0, "on chain");
+      add(2.3, "Each watcher scans the chain with its own viewing key and finds the output sent to its own address. Nobody forwards anything.", 0, "read");
+      add(3.3, "Signatures check out. All five watchers reset their deadline. Rings full.", 0, "reset");
+      add(4.6, "Between heartbeats the rings drain. A ring that reaches zero means: release my share.", 0, "waiting");
+      add(7, "Heartbeat 2. Same pattern: one tx, five outputs, five independent readers.", 0, "heartbeat");
+      add(9.3, "The watchers never talk to each other. Each one decides alone, from chain data only.", 0, "reset");
+      add(13, "As long as the principal keeps pulsing, no ring ever reaches zero and nothing is released.", 0, "heartbeat");
+      add(20.3, "The heartbeat payments also fund each watcher's wallet, so a watcher can always afford its release transaction.", 0, "wallets");
+    } else if (k === "two-down"){
+      add(0, "w2 and w4 are offline: a power cut, a seized laptop, a long flight. Their timers are not running.", 1, "offline");
+      add(1, "Heartbeat 1 goes out anyway. The single transaction still pays all five addresses, including the two offline ones.", 0, "heartbeat");
+      add(2.3, "Three online watchers read it. The outputs for w2 and w4 just sit in the block, waiting.", 0, "read");
+      add(7, "Heartbeat 2. Still three readers. Nothing is lost: every output is in the ledger.", 0, "heartbeat");
+      add(12.4, "w2 and w4 come back online and sync the chain from where they stopped.", 0, "sync");
+      add(12.7, "They replay every heartbeat they missed, oldest first, checking each signature.", 0, "replay");
+      add(14.4, "Caught up. Their deadline counts from the last heartbeat's block time, so all five agree on when to release.", 0, "agreed");
+      add(15.3, "Heartbeat 3 reaches all five. The chain is the mailbox, so downtime does not lose heartbeats.", 0, "heartbeat");
+    } else {
+      var three = k === "three-release";
+      if (three) add(0, "w2 and w4 have been seized or knocked offline. Only three watchers remain, exactly the threshold.", 1, "seized");
+      else add(0, "All five watchers are online. Two normal heartbeats come first.", 0, "armed");
+      add(1, three ? "Heartbeat 1 reaches the three live watchers." : "Heartbeat 1: one tx, five outputs. Every watcher resets.", 0, "heartbeat");
+      add(7, "Heartbeat 2. Rings refill.", 0, "heartbeat");
+      add(P.sc.dark, "The principal goes silent: captured, coerced, or worse. No more heartbeats.", 1, "silent");
+      add(11, "Each watcher keeps its own clock and polls on its own schedule, so the rings drain at slightly different speeds.", 1, "draining");
+      var s = P.shares;
+      if (s.length){
+        add(s[0].z, wn(s[0].wi) + "'s deadline passes. It unseals its share and posts it as memo ZP1 SH to the public release address.", 1, "release");
+        add(s[0].ta, "1 of 3 on the release address. Anyone can read it with the public viewing key. Alone, it reveals nothing about K.", 1, "1 / 3");
+      }
+      if (s.length > 1) add(s[1].ta, "2 of 3. Still nothing. Two shares of a 3-of-5 Shamir split look like random bytes.", 1, "2 / 3");
+      if (P.T3 !== null){
+        add(P.T3, "3 of 3. Anyone with the release viewing key from the public manifest combines the three shares and rebuilds K.", 0, "threshold");
+        add(P.T3 + 2, "The vault opens. The ciphertext was public all along; now the world can read it.", 0, "released");
+        if (three) add(P.T3 + 4.5, "Two seized or offline watchers could not stop the release. And two colluding watchers could not fire it early: 2 shares reveal nothing.", 0, "why 3 of 5");
+      }
+      if (!three && s.length > 3) add(Math.max(s[3].ta, P.T3 + 4.5), "w2 and w4 post their shares too. Extra shares are redundant: the threshold was already met.", 0, "5 / 3");
+    }
+    c.sort(function(a,b){ return a.t - b.t; });
+    return c;
+  }
+
+  /* ---------- static scene ---------- */
+  var gS = $("zv-static"), gD = $("zv-dyn");
+  var R = {};
+  function buildScene(){
+    // principal
+    tx(gS, 20, 34, "VAULT leak", "lbl");
+    tx(gS, 20, 54, "t = 3 of n = 5", "lbl");
+    tx(gS, 20, 74, "AES-256-GCM + Shamir", "lbl");
+    tx(gS, 250, 26, "PULSE", "lbl");
+    el("line", {x1:250, y1:78, x2:640, y2:78, "class":"ecgbase"}, gS);
+    R.ecg = el("path", {"class":"ecg", d:""}, gS);
+    var gp = el("g", {}, gS); R.pg = gp;
+    R.pglow = el("ellipse", {cx:PX, cy:56, rx:70, ry:40, "class":"glow", opacity:0}, gp);
+    el("rect", {x:752, y:26, width:96, height:60, rx:3, "class":"lap"}, gp);
+    el("rect", {x:758, y:32, width:84, height:48, "class":"lapscr"}, gp);
+    el("path", {d:"M738 86 H862 L852 96 H748 Z", "class":"lap"}, gp);
+    R.scr = tx(gp, PX, 61, "ZP1", "disp grn", "middle");
+    R.scr.setAttribute("font-size", "17");
+    tx(gS, PX, 118, "PRINCIPAL / journalist", "disp ttl", "middle").setAttribute("font-size", "16");
+    R.pstat = tx(gS, PX, 138, "alive", "lbl", "middle");
+    // chain
+    tx(gS, 20, 150, "ZCASH CHAIN / shielded pool", "disp ttl").setAttribute("font-size", "16");
+    R.height = tx(gS, 345, 150, "", "lbl");
+    el("rect", {x:10, y:160, width:980, height:98, rx:2, "class":"band"}, gS);
+    var cp = el("clipPath", {id:"zv-clip"}, gS);
+    el("rect", {x:12, y:162, width:882, height:94}, cp);
+    R.blocks = el("g", {"clip-path":"url(#zv-clip)"}, gS);
+    el("rect", {x:902, y:BY, width:80, height:BH, "class":"pool"}, gS);
+    tx(gS, 942, BY + BH - 8, "mempool", "blkh", "middle");
+    // watchers
+    R.w = [];
+    for (var i = 0; i < 5; i++){
+      var g = el("g", {"class":"w"}, gS); setT(g, WX[i], WY);
+      tx(g, 0, -50, ROLES[i], "wrole", "middle");
+      var glow = el("circle", {r:44, "class":"glow", opacity:0}, g);
+      el("circle", {r:32, "class":"track"}, g);
+      var ring = el("circle", {r:32, "class":"ring", transform:"rotate(-90)", "stroke-dasharray":C.toFixed(2), "stroke-dashoffset":"0"}, g);
+      el("circle", {r:27, "class":"wcore"}, g);
+      tx(g, 0, 8, "w" + (i+1), "wname", "middle");
+      var x1 = el("line", {x1:-20, y1:-20, x2:20, y2:20, "class":"xmark", opacity:0}, g);
+      var x2 = el("line", {x1:20, y1:-20, x2:-20, y2:20, "class":"xmark", opacity:0}, g);
+      var st = tx(g, 0, 56, "", "wstat", "middle");
+      el("rect", {x:-72, y:66, width:144, height:22, rx:2, "class":"wallet"}, g);
+      var wl = tx(g, 0, 81, "", "wallt", "middle");
+      R.w.push({g:g, ring:ring, glow:glow, st:st, wl:wl, x1:x1, x2:x2});
+    }
+    // release address
+    R.rbox = el("rect", {x:30, y:492, width:450, height:150, rx:2, "class":"boxr"}, gS);
+    tx(gS, 50, 520, "RELEASE ADDRESS", "disp ttl").setAttribute("font-size", "17");
+    tx(gS, 50, 540, "viewing key published in the manifest", "lbl");
+    R.cnt = tx(gS, 462, 532, "0/3", "cnt", "end");
+    R.chips = [];
+    for (var j = 0; j < 5; j++){
+      el("rect", {x:SLOTX(j), y:SLOTY, width:76, height:26, rx:2, "class":"slot"}, gS);
+      var cg = el("g", {opacity:0}, gS); setT(cg, SLOTX(j), SLOTY);
+      el("rect", {width:76, height:26, rx:2, "class":"chip"}, cg);
+      var ct = tx(cg, 38, 17, "", "chipt", "middle");
+      R.chips.push({g:cg, t:ct});
+    }
+    R.rstat = tx(gS, 50, 624, "", "lbl");
+    // vault / world
+    R.vbox = el("rect", {x:510, y:492, width:480, height:150, rx:2, "class":"boxr boxv"}, gS);
+    tx(gS, 530, 520, "THE WORLD", "disp ttl").setAttribute("font-size", "17");
+    tx(gS, 530, 540, "vault.bin is public; K is not", "lbl");
+    R.lockg = el("g", {}, gS);
+    R.shackle = el("path", {d:"M930 552 v-9 a11 11 0 0 1 22 0 v9", "class":"lock"}, R.lockg);
+    el("rect", {x:924, y:552, width:34, height:26, rx:2, "class":"lockb"}, R.lockg);
+    R.lines = [];
+    for (var q = 0; q < 3; q++) R.lines.push(tx(gS, 530, 572 + q*24, "", "garb"));
+    R.frags = [];
+    for (var f = 0; f < 3; f++){
+      var fg = el("g", {opacity:0}, gS);
+      el("rect", {x:-13, y:-9, width:26, height:18, rx:2, "class":"frag"}, fg);
+      var ftx = tx(fg, 0, 4, "", "chipt", "middle"); ftx.setAttribute("font-size", "10");
+      R.frags.push({g:fg, t:ftx});
+    }
+    R.key = el("g", {opacity:0}, gS);
+    el("circle", {cx:KEYPT[0] - 22, cy:KEYPT[1], r:9, "class":"key"}, R.key);
+    el("path", {d:"M" + (KEYPT[0]-13) + " " + KEYPT[1] + " H" + (KEYPT[0]+22) + " M" + (KEYPT[0]+14) + " " + KEYPT[1] + " v8 M" + (KEYPT[0]+22) + " " + KEYPT[1] + " v8", "class":"key"}, R.key);
+    tx(R.key, KEYPT[0] + 40, KEYPT[1] + 6, "K", "disp grn", "middle").setAttribute("font-size", "16");
+    R.envs = [];
+    R.bpool = [];
+  }
+
+  function env(i){
+    while (R.envs.length <= i){
+      var g = el("g", {"class":"env"}, gD);
+      var r = el("rect", {x:0, y:-11, width:52, height:22, rx:2}, g);
+      var p = el("path", {d:""}, g);
+      var t = tx(g, 26, 4, "", "", "middle");
+      R.envs.push({g:g, r:r, p:p, t:t, w:0, kind:"", label:""});
+    }
+    return R.envs[i];
+  }
+  function blockEl(i){
+    while (R.bpool.length <= i){
+      var g = el("g", {}, R.blocks);
+      el("rect", {width:BW, height:BH, rx:2, "class":"blk"}, g);
+      var h = tx(g, 6, 15, "", "blkh");
+      var rows = [];
+      for (var q = 0; q < 3; q++){
+        var rg = el("g", {}, g); setT(rg, 6, 22 + q*16);
+        var rr = el("rect", {width:88, height:14, rx:1}, rg);
+        var rt = tx(rg, 44, 11, "", "memt", "middle");
+        rows.push({g:rg, r:rr, t:rt});
+      }
+      R.bpool.push({g:g, h:h, rows:rows, k:-1});
+    }
+    return R.bpool[i];
+  }
+
+  /* ---------- per-frame render ---------- */
+  var P = null;
+  function shiftAt(t){
+    var n = 0;
+    for (var k = 0; k < P.blocks.length; k++){ var b = P.blocks[k].t; if (t < b) break; n += ease((t - b)/.6); }
+    return {n:n, s:Math.max(0, n - VIS)};
+  }
+  function blockX(k, t, sh){
+    var b = P.blocks[k].t, p = ease((t - b)/.6);
+    var x = 20 + 110*(k - sh.s);
+    if (sh.s === 0) x = lerp(900, x, p);
+    return x;
+  }
+  function g(x, m, s){ var d = (x - m)/s; return Math.exp(-d*d); }
+  function ecgPath(t){
+    var sc = P.sc, d = "", W0 = 250, W1 = 640, span = 8;
+    for (var x = W0; x <= W1; x += 3){
+      var ts = t - (W1 - x)/(W1 - W0)*span, v = 0;
+      for (var j = 0; j < sc.hbs.length; j++){
+        var dt = ts - sc.hbs[j];
+        if (dt > -.1 && dt < .6) v += 5*g(dt,.05,.025) - 6*g(dt,.14,.012) + 34*g(dt,.18,.014) - 10*g(dt,.22,.014) + 7*g(dt,.38,.04);
+      }
+      d += (x === W0 ? "M" : "L") + x + " " + (78 - v).toFixed(1);
+    }
+    return d;
+  }
+  function wState(i, t){
+    var sc = P.sc, d = sc.down[i], D = sc.D[i];
+    var o = {mode:"on", level:1, seen:0, flash:0, txt:""};
+    if (d && t >= d[0] && t < d[1]) { o.mode = d[1] > 1e8 ? "seized" : "off"; }
+    var to = 0, rf = P.refills[i];
+    for (var q = 0; q < rf.length; q++){
+      if (rf[q].t <= t){ to = rf[q].to; o.seen++; if (t - rf[q].t < .5) o.flash = 1 - (t - rf[q].t)/.5; }
+    }
+    o.level = clamp(1 - (t - to)/D, 0, 1);
+    if (P.sync[i] && t >= P.sync[i][0] && t < P.sync[i][1] + .2) o.mode = "sync";
+    if (P.z[i] !== null && t >= P.z[i]) { o.mode = "rel"; o.level = 0; }
+    o.rem = o.level*D;
+    return o;
+  }
+
+  var lastCap = -1;
+  function render(t){
+    var sc = P.sc;
+    var dark = sc.dark !== null && t >= sc.dark;
+    // principal
+    var pulse = 0;
+    for (var j = 0; j < sc.hbs.length; j++){ var dt = t - sc.hbs[j]; if (dt >= 0 && dt < .8) pulse = Math.max(pulse, 1 - dt/.8); }
+    R.pglow.setAttribute("opacity", (pulse*.8).toFixed(2));
+    R.pg.setAttribute("class", dark ? "dark" : "");
+    R.scr.textContent = dark ? "--" : "ZP1";
+    R.scr.setAttribute("class", dark ? "disp lbl" : "disp grn");
+    R.pstat.textContent = dark ? "CAPTURED / SILENT" : "alive / pulse every 6 s";
+    R.pstat.setAttribute("class", dark ? "lbl amb" : "lbl");
+    R.ecg.setAttribute("d", ecgPath(t));
+    R.ecg.setAttribute("class", dark ? "ecg dead" : "ecg");
+    // blocks
+    var sh = shiftAt(t), used = 0, height = 0;
+    for (var k = 0; k < P.blocks.length; k++){
+      var b = P.blocks[k];
+      if (t < b.t) break;
+      var x = blockX(k, t, sh);
+      if (x < -110 || x > 1000) continue;
+      var be = blockEl(used++);
+      be.g.style.display = "";
+      setT(be.g, x, BY);
+      be.g.setAttribute("opacity", ease((t - b.t)/.5).toFixed(2));
+      be.h.textContent = "#" + (3104200 + k);
+      for (var q = 0; q < 3; q++){
+        var m = b.memos[q], row = be.rows[q];
+        if (!m){ row.g.style.display = "none"; continue; }
+        row.g.style.display = "";
+        row.r.setAttribute("class", m.sh ? "mem-sh" : "mem-hb");
+        row.t.setAttribute("class", m.sh ? "memt sh" : "memt");
+        row.t.textContent = m.label;
+      }
+      height = 3104200 + k;
+    }
+    for (var u = used; u < R.bpool.length; u++) R.bpool[u].g.style.display = "none";
+    R.height.textContent = height ? "tip #" + height : "";
+    // flights
+    var ne = 0;
+    for (var f = 0; f < P.flights.length; f++){
+      var F = P.flights[f], endT = F.tw !== undefined ? F.tw : F.t1;
+      if (t < F.t0 || t >= endT) continue;
+      var pos, p = ease((t - F.t0)/(F.t1 - F.t0));
+      if (F.kind === "tx"){
+        pos = t < F.t1 ? quad([PX + 64, 62], [965, 70], MEM, p) : [MEM[0], MEM[1] - 6 + Math.sin(t*6)*1.5];
+      } else if (F.kind === "shtx"){
+        var a = [WX[F.wi], WY - 44];
+        pos = t < F.t1 ? quad(a, [(a[0] + MEM[0])/2, 300], [MEM[0], MEM[1] + 6], p) : [MEM[0], MEM[1] + 6 + Math.sin(t*6)*1.5];
+      } else if (F.kind === "hb" || F.kind === "replay"){
+        var bx = blockX(F.k, t, sh) + BW/2, a2 = [bx, BY + BH - 6], c2 = [WX[F.wi], WY - 46];
+        pos = quad(a2, [(a2[0] + c2[0])/2, 300], c2, p);
+      } else if (F.kind === "sh"){
+        var bx2 = blockX(F.k, t, sh) + BW/2, a3 = [bx2, BY + BH - 6], c3 = [SLOTX(F.slot) + 38, SLOTY + 13];
+        pos = quad(a3, [(a3[0] + c3[0])/2 + 40, 470], c3, p);
+      }
+      var E = env(ne++);
+      E.g.style.display = "";
+      if (E.kind !== F.kind){ E.kind = F.kind; E.g.setAttribute("class", "env " + F.kind); }
+      if (E.w !== F.w){ E.w = F.w; E.r.setAttribute("width", F.w); E.r.setAttribute("x", -F.w/2); E.t.setAttribute("x", 0);
+        E.p.setAttribute("d", "M" + (-F.w/2) + " -11 L0 -3 L" + (F.w/2) + " -11"); }
+      if (E.label !== F.label){ E.label = F.label; E.t.textContent = F.label; }
+      setT(E.g, pos[0], pos[1]);
+    }
+    for (var e2 = ne; e2 < R.envs.length; e2++) R.envs[e2].g.style.display = "none";
+    // watchers
+    for (var i = 0; i < 5; i++){
+      var ws = wState(i, t), W = R.w[i];
+      var off = ws.mode === "off" || ws.mode === "seized";
+      W.g.setAttribute("class", "w" + (off ? " off" : "") + (ws.mode === "rel" ? " rel" : ""));
+      W.ring.setAttribute("stroke-dashoffset", (C*(1 - ws.level)).toFixed(2));
+      W.ring.setAttribute("class", ws.level < .25 ? "ring low" : "ring");
+      W.glow.setAttribute("opacity", (ws.flash*.9).toFixed(2));
+      W.x1.setAttribute("opacity", ws.mode === "seized" ? 1 : 0);
+      W.x2.setAttribute("opacity", ws.mode === "seized" ? 1 : 0);
+      var st = "", warn = false;
+      if (ws.mode === "seized") st = "SEIZED / OFFLINE";
+      else if (ws.mode === "off") st = "OFFLINE";
+      else if (ws.mode === "sync") st = "syncing chain...";
+      else if (ws.mode === "rel") { st = "SHARE POSTED"; warn = true; }
+      else { st = "deadline " + ws.rem.toFixed(1) + " s"; warn = ws.level < .25; }
+      W.st.textContent = st;
+      W.st.setAttribute("class", warn ? "wstat warn" : "wstat");
+      W.wl.textContent = ws.mode === "rel" ? "HB read " + ws.seen + " / SH sent" : "wallet / HB read " + ws.seen;
+    }
+    // release + vault
+    var cnt = 0;
+    for (var s = 0; s < P.shares.length; s++) if (t >= P.shares[s].ta) cnt++;
+    for (var c = 0; c < 5; c++){
+      var S = P.shares[c], ch = R.chips[c];
+      if (S && t >= S.ta){ ch.g.setAttribute("opacity", 1); ch.t.textContent = "share " + wn(S.wi); }
+      else ch.g.setAttribute("opacity", 0);
+    }
+    R.cnt.textContent = cnt + "/3";
+    R.cnt.setAttribute("class", cnt >= 3 ? "cnt ok" : cnt > 0 ? "cnt hot" : "cnt");
+    R.rbox.setAttribute("class", cnt > 0 ? "boxr hot" : "boxr");
+    if (!sc.release) R.rstat.textContent = "no shares here: the switch is armed";
+    else if (cnt === 0) R.rstat.textContent = dark ? "waiting for watchers' deadlines" : "empty while heartbeats arrive";
+    else if (cnt < 3) R.rstat.textContent = cnt + " share" + (cnt > 1 ? "s" : "") + " visible: K still unknown";
+    else R.rstat.textContent = "threshold met: K = combine(any 3)";
+    var T3 = P.T3, opened = T3 !== null && t >= T3 + 1.8;
+    // fragments
+    for (var fi = 0; fi < 3; fi++){
+      var FR = R.frags[fi];
+      if (T3 === null || t < T3 || t >= T3 + 1.8){ FR.g.setAttribute("opacity", 0); continue; }
+      var sS = P.shares[fi], pp = ease((t - T3)/1.4);
+      var from = [SLOTX(fi) + 38, SLOTY + 13], to = [KEYPT[0] - 10 + (fi - 1)*14*(1 - pp), KEYPT[1]];
+      var pos2 = quad(from, [(from[0] + to[0])/2, 470 + fi*10], to, pp);
+      FR.t.textContent = wn(sS.wi);
+      FR.g.setAttribute("opacity", (1 - clamp((t - T3 - 1.4)/.4, 0, 1)).toFixed(2));
+      setT(FR.g, pos2[0], pos2[1]);
+    }
+    var keyOp = T3 === null ? 0 : clamp((t - T3 - 1.3)/.5, 0, 1);
+    R.key.setAttribute("opacity", keyOp.toFixed(2));
+    var lo = T3 === null ? 0 : ease((t - T3 - 1.8)/.8);
+    R.shackle.setAttribute("transform", "translate(0," + (-10*lo).toFixed(1) + ")");
+    R.lockg.setAttribute("class", opened ? "open" : "");
+    R.vbox.setAttribute("class", opened ? "boxr boxv open" : "boxr boxv");
+    if (opened && t >= T3 + 2.4){
+      var chars = Math.floor((t - T3 - 2.4)*32), full = DOSS[0].length + DOSS[1].length;
+      R.lines[0].textContent = DOSS[0].slice(0, chars);
+      R.lines[1].textContent = DOSS[1].slice(0, Math.max(0, chars - DOSS[0].length));
+      R.lines[2].textContent = chars > full + 6 ? "readable by anyone now. no server." : "";
+      R.lines[0].setAttribute("class", "doss"); R.lines[1].setAttribute("class", "doss"); R.lines[2].setAttribute("class", "lbl");
+    } else {
+      R.lines[0].textContent = GARB[0]; R.lines[1].textContent = GARB[1];
+      R.lines[0].setAttribute("class", "garb"); R.lines[1].setAttribute("class", "garb");
+      R.lines[2].setAttribute("class", cnt > 0 ? "lbl amb" : "lbl");
+      R.lines[2].textContent = cnt === 1 ? "1 share: reveals nothing" : cnt === 2 ? "2 shares: still nothing" : opened ? "" : (T3 !== null && t >= T3 ? "rebuilding K..." : "locked: needs 3 shares");
+    }
+    // captions + clock
+    var ci = 0;
+    for (var q2 = 0; q2 < P.caps.length; q2++) if (P.caps[q2].t <= t) ci = q2;
+    if (ci !== lastCap){
+      lastCap = ci;
+      var cap = P.caps[ci];
+      $("zv-captext").textContent = cap.s;
+      $("zv-captag").textContent = cap.tag || "now";
+      $("zv-cap").className = "zv-cap" + (cap.warn ? " warn" : "");
+    }
+    $("zv-clock").textContent = "t = " + t.toFixed(1) + " s";
+    $("zv-prog").style.width = (100*clamp(t/sc.end, 0, 1)).toFixed(1) + "%";
+  }
+
+  /* ---------- controls ---------- */
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var state = {t:0, playing:!reduce, speed:1, last:null};
+  var playBtn = $("zv-play");
+  function syncPlay(){ playBtn.textContent = state.playing ? "Pause" : "Play"; playBtn.setAttribute("aria-label", state.playing ? "Pause" : "Play"); }
+  function select(key){
+    if (!SC[key]) key = "heartbeat";
+    P = build(key); state.t = 0; lastCap = -1;
+    var tabs = root.querySelectorAll(".zv-tab");
+    for (var i = 0; i < tabs.length; i++){
+      var on = tabs[i].getAttribute("data-s") === key;
+      tabs[i].setAttribute("aria-selected", on ? "true" : "false");
+      tabs[i].setAttribute("tabindex", on ? "0" : "-1");
+    }
+    $("zv-stage").setAttribute("aria-labelledby", "zv-tab-" + key);
+    $("zv-stitle").textContent = P.sc.title;
+    $("zv-ssub").textContent = P.sc.sub;
+    render(0);
+  }
+  function fromHash(){ var h = (location.hash || "").replace("#", ""); return SC[h] ? h : "heartbeat"; }
+  var tabEls = root.querySelectorAll(".zv-tab");
+  for (var ti = 0; ti < tabEls.length; ti++){
+    tabEls[ti].addEventListener("click", function(){
+      var k = this.getAttribute("data-s");
+      if (location.hash !== "#" + k){ location.hash = k; } else select(k);
+    });
+    tabEls[ti].addEventListener("keydown", function(ev){
+      var idx = ORDER.indexOf(this.getAttribute("data-s")), n = null;
+      if (ev.key === "ArrowRight") n = (idx + 1) % 4;
+      else if (ev.key === "ArrowLeft") n = (idx + 3) % 4;
+      if (n !== null){ ev.preventDefault(); $("zv-tab-" + ORDER[n]).focus(); $("zv-tab-" + ORDER[n]).click(); }
+    });
+  }
+  window.addEventListener("hashchange", function(){ var h = (location.hash || "").replace("#", ""); if (SC[h]) select(h); });
+  playBtn.addEventListener("click", function(){
+    if (!state.playing && state.t >= P.sc.end) state.t = 0;
+    state.playing = !state.playing; state.last = null; syncPlay();
+  });
+  $("zv-restart").addEventListener("click", function(){ state.t = 0; lastCap = -1; render(0); });
+  var spBtns = root.querySelectorAll("[data-speed]");
+  for (var si = 0; si < spBtns.length; si++){
+    spBtns[si].addEventListener("click", function(){
+      state.speed = +this.getAttribute("data-speed");
+      for (var j = 0; j < spBtns.length; j++) spBtns[j].setAttribute("aria-pressed", spBtns[j] === this ? "true" : "false");
+    });
+  }
+  function frame(now){
+    if (state.playing){
+      if (state.last !== null){
+        var dt = Math.min(.1, (now - state.last)/1000)*state.speed;
+        state.t += dt;
+        if (state.t > P.sc.end){ state.t = 0; lastCap = -1; }
+        render(state.t);
+      }
+      state.last = now;
+    } else state.last = null;
+    requestAnimationFrame(frame);
+  }
+  buildScene();
+  select(fromHash());
+  syncPlay();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

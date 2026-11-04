@@ -1,6 +1,6 @@
 """zpulse.principal: the journalist's side. init -> (watchers enroll) -> seal -> pulse ... [cancel].
 
-  python3 -m zpulse.principal init   --name NAME --file PATH --threshold 3 --interval 120 --grace 30 [--heartbeat-zat 10000]
+  python3 -m zpulse.principal init   --name NAME --file PATH --threshold 3 --interval 120 --grace 30 [--heartbeat-zat 20000]
   python3 -m zpulse.principal seal   --name NAME
   python3 -m zpulse.principal pulse  --name NAME [--duress]
   python3 -m zpulse.principal cancel --name NAME
@@ -193,7 +193,8 @@ def main(argv=None) -> None:
     s.add_argument("--threshold", type=int, default=3)
     s.add_argument("--interval", type=int, default=120)
     s.add_argument("--grace", type=int, default=30)
-    s.add_argument("--heartbeat-zat", type=int, default=10000)
+    s.add_argument("--heartbeat-zat", type=int, default=20000,
+                   help="zat paid to each watcher per heartbeat; a release costs 11000 (1000 + fee), so keep >= 20000")
     for c in ("seal", "pulse", "cancel", "status"):
         s = common_args(sub.add_parser(c))
         s.add_argument("--name", required=True)

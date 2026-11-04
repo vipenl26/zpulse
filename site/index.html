@@ -1,0 +1,874 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>zpulse</title>
+<meta name="description" content="zpulse: a dead man's switch for whistleblowers on Zcash. No server, no recipient. Shielded memos are the only transport.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=VT323&amp;family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&amp;display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: dark;
+  --bg:#070a08;
+  --bg-2:#0b100c;
+  --panel:#0d140f;
+  --line:#1c2a20;
+  --line-2:#26392b;
+  --ink:#4dff8f;
+  --ink-strong:#8dffb6;
+  --ink-dim:#2fbf68;
+  --glow:rgba(77,255,143,.35);
+  --text:#c9dccd;
+  --muted:#7f9686;
+  --faint:#4d6153;
+  --amber:#ffb547;
+  --amber-dim:#c98a2a;
+  --amber-glow:rgba(255,181,71,.35);
+  --sel:rgba(77,255,143,.25);
+  --font-display:"VT323","Share Tech Mono","Courier New",ui-monospace,monospace;
+  --font-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace;
+}
+body{background:var(--bg);color:var(--text)}
+
+.zp{position:relative;background:var(--bg);color:var(--text);font-family:var(--font-mono);font-size:15px;line-height:1.65;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;min-height:100vh}
+.zp *,.zp *::before,.zp *::after{box-sizing:border-box}
+.zp ::selection{background:var(--sel);color:var(--ink-strong)}
+.zp::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:50;
+  background:repeating-linear-gradient(to bottom,rgba(0,0,0,0) 0,rgba(0,0,0,0) 2px,rgba(0,0,0,.16) 3px,rgba(0,0,0,0) 4px);
+  mix-blend-mode:multiply;opacity:.55}
+.zp::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:49;
+  background:radial-gradient(ellipse at 50% 0%,rgba(77,255,143,.05),rgba(0,0,0,0) 60%)}
+
+.wrap{max-width:1080px;margin:0 auto;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.zp section{padding-block:72px}
+.zp a{color:var(--ink);text-decoration:underline;text-decoration-color:var(--line-2);text-underline-offset:3px}
+.zp a:hover{color:var(--ink-strong);text-decoration-color:var(--ink)}
+.zp a:focus-visible,.zp button:focus-visible,.zp [tabindex]:focus-visible{outline:2px solid var(--ink);outline-offset:3px;border-radius:0}
+.zp h1,.zp h2,.zp h3{font-family:var(--font-display);font-weight:400;color:var(--ink);text-wrap:balance;margin:0;letter-spacing:.01em}
+.zp h2{font-size:clamp(2.3rem,6vw,3.4rem);line-height:1;text-shadow:0 0 18px var(--glow)}
+.zp h3{font-size:1.75rem;line-height:1.1;color:var(--ink-strong)}
+.zp p{margin:0 0 1em;max-width:68ch}
+.zp code{font-family:var(--font-mono);font-size:.92em;color:var(--ink-strong)}
+.zp .num,.zp table,.zp time{font-variant-numeric:tabular-nums}
+.zp strong{color:var(--ink-strong);font-weight:600}
+.zp .amber{color:var(--amber)}
+.zp .muted{color:var(--muted)}
+
+/* section header */
+.sh{display:grid;gap:10px;margin-bottom:36px}
+.sh .idx{font-size:.8rem;color:var(--faint);letter-spacing:.2em;text-transform:uppercase}
+.sh .idx b{color:var(--ink-dim);font-weight:500}
+.sh .lede{color:var(--muted);max-width:62ch;margin:6px 0 0}
+.rule{font-family:var(--font-mono);color:var(--line-2);white-space:nowrap;overflow:hidden;font-size:.8rem;line-height:1;user-select:none;
+  padding-block:4px}
+.rule span{color:var(--faint)}
+
+/* nav */
+.nav{display:flex;justify-content:space-between;align-items:center;gap:16px;padding-block:18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.nav .brand{font-family:var(--font-display);font-size:1.8rem;color:var(--ink);text-decoration:none;line-height:1}
+.nav .brand span{color:var(--faint)}
+.nav ul{display:flex;gap:18px;list-style:none;margin:0;padding:0;flex-wrap:wrap;font-size:.82rem}
+.nav ul a{color:var(--muted);text-decoration:none}
+.nav ul a:hover{color:var(--ink)}
+
+/* hero */
+.hero{padding-block:56px 64px}
+.hero-grid{display:grid;gap:40px}
+.tag{display:inline-flex;align-items:center;gap:10px;font-size:.78rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--ink);box-shadow:0 0 10px var(--ink);animation:blink 1.4s steps(2,start) infinite}
+.hero h1{font-size:clamp(4.5rem,15vw,9rem);line-height:.85;margin-top:18px;text-shadow:0 0 28px var(--glow)}
+.hero h1 .cur{display:inline-block;width:.45em;height:.75em;background:var(--ink);margin-left:.08em;vertical-align:-.02em;animation:blink 1.06s steps(2,start) infinite;box-shadow:0 0 18px var(--glow)}
+.thesis{font-size:clamp(1.05rem,2.3vw,1.3rem);line-height:1.55;color:var(--text);max-width:40ch;margin:22px 0 0}
+.thesis em{font-style:normal;color:var(--amber)}
+.sub{color:var(--muted);margin-top:16px;max-width:58ch}
+.ctas{display:flex;gap:14px;flex-wrap:wrap;margin-top:30px}
+.btn{display:inline-flex;align-items:center;gap:10px;padding:12px 18px;border:1px solid var(--ink);color:var(--bg) !important;background:var(--ink);
+  text-decoration:none !important;font-family:var(--font-mono);font-weight:600;font-size:.9rem;letter-spacing:.02em}
+.btn:hover{background:var(--ink-strong);border-color:var(--ink-strong);box-shadow:0 0 20px var(--glow)}
+.btn.ghost{background:transparent;color:var(--ink) !important}
+.btn.ghost:hover{background:rgba(77,255,143,.08);color:var(--ink-strong) !important}
+
+/* monitor */
+.monitor{border:1px solid var(--line-2);background:linear-gradient(var(--panel),var(--bg-2));position:relative}
+.mon-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line);font-size:.75rem;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.mon-head .st{color:var(--ink)}
+.mon-body{padding:14px 18px 6px}
+.cd-label{font-size:.75rem;letter-spacing:.2em;text-transform:uppercase;color:var(--faint)}
+.cd{font-family:var(--font-display);font-size:clamp(5.5rem,24vw,11rem);line-height:.9;color:var(--ink);text-shadow:0 0 30px var(--glow);
+  font-variant-numeric:tabular-nums;letter-spacing:.02em;transition:color .3s}
+.monitor.warn .cd{color:var(--amber);text-shadow:0 0 30px var(--amber-glow)}
+.monitor.warn .mon-head .st{color:var(--amber)}
+.monitor.flash .cd{color:var(--ink-strong)}
+.ecg{display:block;width:100%;height:70px;margin-top:6px}
+.ecg path{fill:none;stroke:var(--ink);stroke-width:2;filter:drop-shadow(0 0 4px rgba(77,255,143,.7))}
+.monitor.warn .ecg path{stroke:var(--amber);filter:drop-shadow(0 0 4px rgba(255,181,71,.6))}
+.ecg .track{animation:ecg 3s linear infinite}
+.mon-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid var(--line)}
+.mon-grid div{padding:10px 14px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);font-size:.78rem;min-width:0}
+.mon-grid div:nth-child(2n){border-right:0}
+.mon-grid div:nth-last-child(-n+2){border-bottom:0}
+.mon-grid dt{color:var(--faint);text-transform:uppercase;letter-spacing:.12em;font-size:.68rem}
+.mon-grid dd{margin:2px 0 0;color:var(--text);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.watchers-row{display:flex;gap:6px;padding:12px 14px;border-top:1px solid var(--line);flex-wrap:wrap;align-items:center;font-size:.72rem;color:var(--muted)}
+.w{padding:2px 7px;border:1px solid var(--line-2);color:var(--ink-dim)}
+.monitor.flash .w{border-color:var(--ink);color:var(--ink-strong)}
+.mon-foot{padding:8px 14px;font-size:.7rem;color:var(--faint);border-top:1px solid var(--line)}
+
+/* armor */
+.armor{font-family:var(--font-mono);font-size:.8rem;line-height:1.55;color:var(--muted);background:var(--bg-2);border:1px dashed var(--line-2);
+  padding:16px 18px;overflow-x:auto;white-space:pre;margin:0}
+.armor b{color:var(--ink);font-weight:500}
+
+/* problem */
+.cols3{display:grid;gap:28px}
+.prob{border-top:1px solid var(--line-2);padding-top:18px}
+.prob .k{font-family:var(--font-display);font-size:1.15rem;color:var(--faint);letter-spacing:.1em}
+.prob h3{margin:6px 0 10px}
+.prob p{color:var(--text)}
+
+/* diagram */
+.flow{display:grid;gap:0;justify-items:center;margin:0 auto 48px;max-width:820px}
+.node{border:1px solid var(--line-2);background:var(--panel);padding:14px 18px;text-align:center;width:min(100%,460px)}
+.node .t{font-family:var(--font-display);font-size:1.6rem;color:var(--ink);line-height:1}
+.node .d{font-size:.78rem;color:var(--muted);margin-top:6px}
+.node.tx{border-color:var(--ink);box-shadow:0 0 24px rgba(77,255,143,.12)}
+.node.world{border-style:double;border-width:3px;border-color:var(--ink-dim)}
+.edge{display:grid;justify-items:center;padding-block:6px;color:var(--ink-dim);font-size:.72rem;text-align:center}
+.edge i{display:block;width:1px;height:22px;background:var(--ink-dim);font-style:normal}
+.edge .lab{padding:3px 0;color:var(--muted);max-width:44ch}
+.edge .lab.amber{color:var(--amber)}
+.edge .arr{line-height:1;font-size:.9rem}
+.wset{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;width:100%}
+.wset .node{width:auto;padding:10px 6px}
+.wset .node .t{font-size:1.35rem}
+.wset .node .d{font-size:.68rem;margin-top:3px}
+
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:0;counter-reset:s}
+.steps li{display:grid;grid-template-columns:64px minmax(0,1fr);gap:16px;padding:20px 0;border-top:1px solid var(--line)}
+.steps li:last-child{border-bottom:1px solid var(--line)}
+.steps li::before{counter-increment:s;content:"0" counter(s);font-family:var(--font-display);font-size:2.4rem;line-height:1;color:var(--ink-dim)}
+.steps h3{font-size:1.5rem;margin-bottom:6px}
+.steps p{margin:0;color:var(--text)}
+
+.memo-tbl{margin-top:36px}
+
+/* tables */
+.tbl{overflow-x:auto;border:1px solid var(--line);background:var(--bg-2)}
+.zp table{border-collapse:collapse;width:100%;font-size:.84rem}
+.zp th,.zp td{text-align:left;vertical-align:top;padding:10px 14px;border-bottom:1px solid var(--line)}
+.zp tr:last-child td{border-bottom:0}
+.zp th{font-weight:500;color:var(--faint);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;background:var(--panel)}
+.zp td code{word-break:break-word}
+.zp td.cmd{white-space:nowrap}
+.zp td.tx{word-break:break-all;font-size:.78rem}
+.zp td.tx a{color:var(--ink)}
+
+/* new vs prior */
+.cmp{display:grid;gap:22px}
+.cmp .col{border:1px solid var(--line);padding:22px;background:var(--bg-2)}
+.cmp .col.new{border-color:var(--ink-dim)}
+.cmp .col h3{font-size:1.5rem;margin-bottom:4px}
+.cmp .col .from{font-size:.75rem;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+.cmp ul{margin:0;padding:0;list-style:none}
+.cmp li{padding:6px 0 6px 22px;position:relative;font-size:.9rem}
+.cmp li::before{content:">";position:absolute;left:0;color:var(--ink-dim)}
+.cmp .col.new li::before{content:"+";color:var(--ink)}
+
+/* quotes */
+.quotes{background:var(--bg-2);border-block:1px solid var(--line)}
+.qfeat{border-left:2px solid var(--ink);padding:8px 0 8px 22px;margin:0 0 48px;min-height:9.5em;display:flex;flex-direction:column;justify-content:center}
+.qfeat blockquote{margin:0;font-family:var(--font-display);font-size:clamp(2rem,5.4vw,3.6rem);line-height:1.02;color:var(--ink-strong);text-wrap:balance;
+  text-shadow:0 0 22px var(--glow);transition:opacity .6s}
+.qfeat figcaption{margin-top:14px;color:var(--muted);font-size:.85rem}
+.qfeat.fade blockquote,.qfeat.fade figcaption{opacity:0}
+.qfeat figcaption{transition:opacity .6s}
+.qgrid{display:grid;gap:0;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));border-top:1px solid var(--line);border-left:1px solid var(--line)}
+.q{margin:0;padding:22px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);cursor:pointer;background:transparent;
+  font:inherit;color:inherit;text-align:left;display:block;width:100%}
+.q:hover{background:rgba(77,255,143,.04)}
+.q.on{background:rgba(77,255,143,.07)}
+.q.on .qt{color:var(--ink-strong)}
+.qt{display:block;font-size:1rem;line-height:1.5;color:var(--text)}
+.qt::before{content:"\201C";color:var(--ink-dim)}
+.qt::after{content:"\201D";color:var(--ink-dim)}
+.qa{display:block;margin-top:10px;font-size:.76rem;color:var(--faint);letter-spacing:.04em}
+.qa::before{content:"-- "}
+
+/* instructions */
+.toc{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:.82rem;margin:0 0 40px;padding:14px 16px;border:1px dashed var(--line-2)}
+.toc a{color:var(--muted);text-decoration:none}
+.toc a:hover{color:var(--ink)}
+.toc a::before{content:"./";color:var(--faint)}
+.block{margin-bottom:56px}
+.block > h3{display:flex;gap:12px;align-items:baseline;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.block > h3 .n{color:var(--faint);font-size:1.2rem}
+.st-list{list-style:none;margin:0;padding:0}
+.st-list > li{padding:18px 0;border-top:1px dashed var(--line)}
+.st-list > li:first-child{border-top:0;padding-top:4px}
+.st-list .h{display:flex;gap:10px;align-items:baseline;color:var(--ink-strong);font-weight:600;margin-bottom:6px}
+.st-list .h .k{font-family:var(--font-display);color:var(--ink-dim);font-size:1.35rem;font-weight:400;min-width:2.2ch}
+.st-list p{color:var(--text);font-size:.9rem}
+.st-list .note{font-size:.82rem;color:var(--muted);margin-top:8px}
+.st-list .warn{color:var(--amber)}
+.req{list-style:none;margin:0;padding:0;display:grid;gap:0;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));border-top:1px solid var(--line);border-left:1px solid var(--line)}
+.req li{padding:14px 16px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);font-size:.86rem}
+.req li b{display:block;color:var(--ink);font-weight:500;margin-bottom:2px}
+.req li span{color:var(--muted)}
+
+.code{position:relative;border:1px solid var(--line-2);background:#050806;margin:10px 0 0}
+.code-bar{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 6px 5px 12px;border-bottom:1px solid var(--line);
+  font-size:.68rem;color:var(--faint);letter-spacing:.14em;text-transform:uppercase}
+.copy{font:inherit;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;background:transparent;color:var(--ink-dim);border:1px solid var(--line-2);
+  padding:4px 10px;cursor:pointer}
+.copy:hover{color:var(--ink-strong);border-color:var(--ink)}
+.copy.ok{color:var(--bg);background:var(--ink);border-color:var(--ink)}
+.copy.sel{color:var(--amber);border-color:var(--amber-dim)}
+.code pre{margin:0;padding:14px 16px;overflow-x:auto;font-size:.82rem;line-height:1.6;tab-size:2}
+.code pre code{color:var(--text);font-size:inherit;white-space:pre}
+.code pre code .c{color:var(--faint)}
+.code pre code .p{color:var(--ink-dim);user-select:none}
+
+.trouble{list-style:none;margin:0;padding:0;display:grid;gap:0}
+.trouble li{padding:16px 0 16px 28px;border-top:1px solid var(--line);position:relative;font-size:.9rem}
+.trouble li::before{content:"!";position:absolute;left:4px;top:15px;color:var(--amber);font-weight:600}
+.trouble li b{color:var(--amber);font-weight:500;display:block;margin-bottom:4px}
+
+/* evidence */
+.ev-h{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline;margin:32px 0 12px}
+.ev-h h3{font-size:1.6rem}
+.ev-h span{font-size:.8rem;color:var(--muted)}
+.callout{border-left:2px solid var(--amber);padding:12px 16px;background:rgba(255,181,71,.05);margin-top:18px;font-size:.88rem}
+.callout b{color:var(--amber);font-weight:500}
+
+/* threat */
+.tm{display:grid;gap:22px}
+.tm .col{border:1px solid var(--line);padding:22px;background:var(--bg-2)}
+.tm .col.no{border-color:rgba(255,181,71,.35)}
+.tm h3{font-size:1.5rem;margin-bottom:12px}
+.tm .col.no h3{color:var(--amber)}
+.tm ul{list-style:none;margin:0;padding:0}
+.tm li{padding:8px 0 8px 24px;position:relative;font-size:.88rem;border-top:1px dashed var(--line)}
+.tm li:first-child{border-top:0}
+.tm .ok li::before{content:"[+]";position:absolute;left:0;color:var(--ink);font-size:.75rem;top:10px}
+.tm .no li::before{content:"[-]";position:absolute;left:0;color:var(--amber);font-size:.75rem;top:10px}
+.prop{font-size:clamp(1rem,2vw,1.15rem);border:1px solid var(--line-2);padding:20px 22px;margin-bottom:28px;background:var(--panel)}
+
+/* footer */
+.foot{border-top:1px solid var(--line);padding-block:40px 56px;font-size:.82rem;color:var(--muted)}
+.foot-grid{display:grid;gap:24px}
+.foot .brand{font-family:var(--font-display);font-size:2.4rem;color:var(--ink);line-height:1}
+.foot p{margin:0 0 6px}
+
+@media (min-width:760px){
+  .zp{font-size:16px}
+  .zp section{padding-block:96px}
+  .cols3{grid-template-columns:repeat(3,minmax(0,1fr));gap:36px}
+  .cmp{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .tm{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .foot-grid{grid-template-columns:2fr 1fr 1fr}
+  .mon-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .mon-grid div{border-bottom:0}
+  .mon-grid div:nth-child(2n){border-right:1px solid var(--line)}
+  .mon-grid div:last-child{border-right:0}
+}
+@media (min-width:980px){
+  .hero-grid{grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);align-items:center;gap:56px}
+}
+@media (max-width:520px){
+  .wset{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+  .wset .node{padding:8px 2px}
+  .wset .node .t{font-size:1.1rem}
+  .wset .node .d{display:none}
+  .steps li{grid-template-columns:44px minmax(0,1fr);gap:10px}
+  .steps li::before{font-size:1.9rem}
+  .nav ul{gap:12px}
+}
+
+@keyframes blink{to{visibility:hidden}}
+@keyframes ecg{from{transform:translateX(0)}to{transform:translateX(-400px)}}
+
+@media (prefers-reduced-motion:reduce){
+  .zp::before{display:none}
+  .zp *,.zp *::before,.zp *::after{animation:none !important;transition:none !important}
+}
+</style>
+</head>
+<body>
+<div class="zp" id="top">
+
+<div class="wrap">
+  <nav class="nav" aria-label="Primary">
+    <a class="brand" href="#top">zpulse<span>_</span></a>
+    <ul>
+      <li><a href="#problem">problem</a></li>
+      <li><a href="#how-it-works">how it works</a></li>
+      <li><a href="#instructions">instructions</a></li>
+      <li><a href="#evidence">evidence</a></li>
+      <li><a href="#threat-model">threat model</a></li>
+      <li><a href="viz.html">visualizer</a></li>
+      <li><a href="https://github.com/vipenl26/zpulse">github</a></li>
+    </ul>
+  </nav>
+</div>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="tag"><span class="dot" aria-hidden="true"></span>dead man's switch // zcash // privacy track</span>
+      <h1>zpulse<span class="cur" aria-hidden="true"></span></h1>
+      <p class="thesis">If I stop checking in, the world reads my files. <em>If someone forces me to check in, the world reads them anyway.</em></p>
+      <p class="sub">A dead man's switch for journalists and whistleblowers. No server, no recipient, no smart contract. Shielded Zcash memos are the only transport, and the release goes to the world.</p>
+      <div class="ctas">
+        <a class="btn" href="https://github.com/vipenl26/zpulse">&gt; github.com/vipenl26/zpulse</a>
+        <a class="btn ghost" href="#how-it-works">how it works &darr;</a>
+      </div>
+    </div>
+
+    <div class="monitor" id="monitor" role="img" aria-label="Illustrative heartbeat monitor: a countdown to the release deadline that resets each time the principal sends a heartbeat.">
+      <div class="mon-head">
+        <span>vault 78d34ee1f3122a6e &middot; 3-of-5</span>
+        <span class="st" id="mon-status">armed</span>
+      </div>
+      <div class="mon-body">
+        <div class="cd-label">release deadline in</div>
+        <div class="cd" id="cd" aria-hidden="true">02:00</div>
+        <svg class="ecg" viewBox="0 0 400 70" preserveAspectRatio="none" aria-hidden="true">
+          <g class="track">
+            <path d="M0 40 L60 40 L70 40 L76 30 L82 40 L96 40 L102 46 L110 6 L118 62 L124 40 L140 40 L148 33 L158 40 L200 40 L260 40 L270 40 L276 30 L282 40 L296 40 L302 46 L310 6 L318 62 L324 40 L340 40 L348 33 L358 40 L400 40 L460 40 L470 40 L476 30 L482 40 L496 40 L502 46 L510 6 L518 62 L524 40 L540 40 L548 33 L558 40 L600 40 L660 40 L670 40 L676 30 L682 40 L696 40 L702 46 L710 6 L718 62 L724 40 L740 40 L748 33 L758 40 L800 40"/>
+          </g>
+        </svg>
+      </div>
+      <dl class="mon-grid">
+        <div><dt>last seq</dt><dd id="seq">0001</dd></div>
+        <div><dt>interval</dt><dd>120 s demo</dd></div>
+        <div><dt>last pulse utc</dt><dd id="lp-utc">--:--:--</dd></div>
+        <div><dt>last pulse ist</dt><dd id="lp-ist">--:--:--</dd></div>
+      </dl>
+      <div class="watchers-row" aria-hidden="true">watchers:
+        <span class="w">w1</span><span class="w">w2</span><span class="w">w3</span><span class="w">w4</span><span class="w">w5</span>
+      </div>
+      <div class="mon-foot">visual demo only. real use: 24-72 h interval, hours of grace.</div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap"><div class="rule" aria-hidden="true">+---------------------------------------------------------------------------------------------------------------------------------------------------------------+</div></div>
+
+<!-- ============ PROBLEM ============ -->
+<section id="problem">
+  <div class="wrap">
+    <div class="sh">
+      <span class="idx"><b>01</b> / the problem</span>
+      <h2>Insurance only works if no one can stop it.</h2>
+      <p class="lede">A journalist or whistleblower holds a dossier. Their best protection is that hurting them makes the dossier come out. Existing dead man's switches break in three places.</p>
+    </div>
+    <div class="cols3">
+      <div class="prob">
+        <div class="k">[ 0x01 ]</div>
+        <h3>Servers get seized.</h3>
+        <p>Most switches are a server somewhere. It can be seized, shut down or quietly reconfigured, and its operator can be leaned on. Whoever controls the box controls whether your files ever leave it.</p>
+      </div>
+      <div class="prob">
+        <div class="k">[ 0x02 ]</div>
+        <h3>Single recipients get pressured.</h3>
+        <p>Other switches hand the file to one recipient: an editor, a lawyer, a friend. One person can be pressured, bribed or silenced. A single point of release is a single point of failure.</p>
+      </div>
+      <div class="prob">
+        <div class="k">[ 0x03 ]</div>
+        <h3 class="amber">Coercion beats every check-in.</h3>
+        <p>If the threat is "keep checking in or else", a switch that only watches for silence is useless. The adversary simply makes you check in. A real switch has to fire when you are forced to keep it quiet.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap"><div class="rule" aria-hidden="true">+---[ <span>zp1</span> ]--------------------------------------------------------------------------------------------------------------------------------------------------------+</div></div>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section id="how-it-works">
+  <div class="wrap">
+    <div class="sh">
+      <span class="idx"><b>02</b> / how it works</span>
+      <h2>One shielded transaction is the heartbeat.</h2>
+      <p class="lede">There is no recipient. Shares go to a public release address whose viewing key is published, so the whole world can reconstruct.</p>
+    </div>
+
+    <div class="flow" role="img" aria-label="Diagram: the principal sends one shielded transaction every interval to five watchers. If heartbeats stop, or a duress heartbeat arrives, each watcher posts its share to a public release address, and anyone with the published viewing key rebuilds the key and decrypts the dossier.">
+      <div class="node">
+        <div class="t">principal</div>
+        <div class="d">vault.bin = AES-256-GCM(dossier, K) &middot; K &rarr; Shamir 3-of-5</div>
+      </div>
+      <div class="edge"><i></i><span class="lab">every interval</span><span class="arr">&#9660;</span></div>
+      <div class="node tx">
+        <div class="t">ONE shielded tx &middot; n outputs</div>
+        <div class="d"><code>ZP1 HB &lt;vault&gt; &lt;seq&gt; &lt;ts&gt; &lt;sig&gt;</code> + zats to fund releases</div>
+      </div>
+      <div class="edge"><i></i><span class="lab">each output to a diversified address made for this one vault</span><span class="arr">&#9660;</span></div>
+      <div class="wset">
+        <div class="node"><div class="t">w1</div><div class="d">NGO</div></div>
+        <div class="node"><div class="t">w2</div><div class="d">lawyer</div></div>
+        <div class="node"><div class="t">w3</div><div class="d">editor</div></div>
+        <div class="node"><div class="t">w4</div><div class="d">journalist</div></div>
+        <div class="node"><div class="t">w5</div><div class="d">friend abroad</div></div>
+      </div>
+      <div class="edge"><i></i><span class="lab amber">heartbeat missed + grace, or DURESS heartbeat</span><span class="lab">each watcher decides alone: <code>ZP1 SH &lt;vault&gt; &lt;w&gt; &lt;share&gt; &lt;sig&gt;</code></span><span class="arr">&#9660;</span></div>
+      <div class="node">
+        <div class="t">release address</div>
+        <div class="d">viewing key published in the public manifest</div>
+      </div>
+      <div class="edge"><i></i><span class="lab">t shares &rarr; K &rarr; decrypt vault.bin</span><span class="arr">&#9660;</span></div>
+      <div class="node world">
+        <div class="t">the world</div>
+        <div class="d">anyone can run <code>python3 -m zpulse.reveal</code></div>
+      </div>
+    </div>
+
+    <ol class="steps">
+      <li><div><h3>Encrypt and split</h3><p>The principal encrypts the dossier with AES-256-GCM and splits the key into <strong>n Shamir shares (t-of-n)</strong>. Each share is sealed to one watcher: an NGO, a lawyer, an editor, a friend abroad. After sealing, the vault key is deleted, so seizing the laptop does not decrypt the vault.</p></div></li>
+      <li><div><h3>Pulse</h3><p>Every interval (48 h in real life, 2 min in the demo) the principal sends <strong>one shielded Zcash transaction</strong> that pays a few thousand zatoshi to every watcher, with a signed "I'm alive" memo. Those zatoshi fund the watcher's later release, so no watcher ever has to top up a wallet.</p></div></li>
+      <li><div><h3>Watch, alone</h3><p>Each watcher spots the heartbeat with <strong>its own wallet only</strong>, on a diversified address made for this one vault, so a payment maps 1:1 to a vault. Watchers never talk to each other and run no server.</p></div></li>
+      <li><div><h3>Release to the world</h3><p>If heartbeats stop and the grace period passes, each watcher on its own posts its share as a shielded memo to the public <strong>release address</strong>. Its viewing key is in the public manifest, so anyone can collect t shares, rebuild the key and decrypt the public ciphertext.</p></div></li>
+      <li><div><h3 class="amber">Duress</h3><p>A <strong>duress heartbeat</strong> looks the same on-chain in shape, size and amount, but it is signed with a second key. The attacker sees a successful pulse. Watchers treat it as "release now".</p></div></li>
+    </ol>
+
+    <div class="memo-tbl">
+      <div class="tbl">
+        <table>
+          <thead><tr><th>kind</th><th>memo (UTF-8, at most 512 bytes)</th><th>signed by</th></tr></thead>
+          <tbody>
+            <tr><td>heartbeat</td><td><code>ZP1 HB &lt;vault_id&gt; &lt;seq&gt; &lt;ts&gt; &lt;sig&gt;</code></td><td>principal key (alive) or duress key (duress)</td></tr>
+            <tr><td>cancel</td><td><code>ZP1 CX &lt;vault_id&gt; &lt;ts&gt; &lt;sig&gt;</code></td><td>principal key</td></tr>
+            <tr><td>share</td><td><code>ZP1 SH &lt;vault_id&gt; &lt;watcher_id&gt; &lt;share_b64&gt; &lt;sig&gt;</code></td><td>watcher key</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap"><div class="rule" aria-hidden="true">+---------------------------------------------------------------------------------------------------------------------------------------------------------------+</div></div>
+
+<!-- ============ WHAT'S NEW ============ -->
+<section id="new">
+  <div class="wrap">
+    <div class="sh">
+      <span class="idx"><b>03</b> / prior art</span>
+      <h2>What we borrowed, and what is new.</h2>
+    </div>
+    <div class="cmp">
+      <div class="col">
+        <h3>Paid Private File</h3>
+        <div class="from"><a href="https://forum.zcashcommunity.com/t/paid-private-file-sell-a-file-for-shielded-zec-delivered-over-nym/56322">sells a file for shielded ZEC, over Nym</a></div>
+        <ul>
+          <li>Viewing key as smart escrow: a light client with the right key sees the payment. No contract decides.</li>
+          <li>One diversified address per vault per watcher.</li>
+          <li>Light-client detection through lightwalletd. No full node.</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h3>z-canary</h3>
+        <div class="from"><a href="https://github.com/unspecifiedcoder/z-canary">github.com/unspecifiedcoder/z-canary</a></div>
+        <ul>
+          <li>Threshold keepers (Shamir t-of-n).</li>
+          <li>Shielded 512-byte memos as the only transport, with no smart contract.</li>
+        </ul>
+      </div>
+      <div class="col new">
+        <h3>new in zpulse</h3>
+        <div class="from">this project</div>
+        <ul>
+          <li><strong>No recipient.</strong> The release viewing key is published; the world reconstructs.</li>
+          <li><strong>Heartbeats are payments</strong> that fund every watcher's release tx.</li>
+          <li><strong>Duress heartbeat.</strong> Under coercion, checking in fires the switch.</li>
+          <li>Watchers never talk to each other and run no server.</li>
+          <li>Pure Python, testnet, runs on a laptop.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ QUOTES ============ -->
+<section class="quotes" id="quotes" aria-labelledby="quotes-h">
+  <div class="wrap">
+    <div class="sh">
+      <span class="idx"><b>04</b> / lineage</span>
+      <h2 id="quotes-h">Old ideas, new transport.</h2>
+    </div>
+    <figure class="qfeat" id="qfeat" aria-live="off">
+      <blockquote id="qfeat-t">Privacy is necessary for an open society in the electronic age.</blockquote>
+      <figcaption id="qfeat-a">-- Eric Hughes, A Cypherpunk's Manifesto (1993)</figcaption>
+    </figure>
+    <div class="qgrid" id="qgrid">
+      <button type="button" class="q on"><span class="qt">Privacy is necessary for an open society in the electronic age.</span><span class="qa">Eric Hughes, A Cypherpunk's Manifesto (1993)</span></button>
+      <button type="button" class="q"><span class="qt">Cypherpunks write code.</span><span class="qa">Eric Hughes</span></button>
+      <button type="button" class="q"><span class="qt">Who watches the watchmen?</span><span class="qa">Juvenal</span></button>
+      <button type="button" class="q"><span class="qt">Sunlight is said to be the best of disinfectants.</span><span class="qa">Louis Brandeis (1913)</span></button>
+      <button type="button" class="q"><span class="qt">Emergencies have always been the pretext on which the safeguards of individual liberty have been eroded.</span><span class="qa">F. A. Hayek</span></button>
+      <button type="button" class="q"><span class="qt">That government is best which governs least.</span><span class="qa">Henry David Thoreau</span></button>
+      <button type="button" class="q"><span class="qt">Courage is contagious.</span><span class="qa">Daniel Ellsberg</span></button>
+      <button type="button" class="q"><span class="qt">Under observation, we act less free, which means we effectively are less free.</span><span class="qa">Edward Snowden</span></button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ INSTRUCTIONS ============ -->
+<section id="instructions">
+  <div class="wrap">
+    <div class="sh">
+      <span class="idx"><b>05</b> / instructions</span>
+      <h2>Run it yourself.</h2>
+      <p class="lede">Start with the offline mock chain (under a minute, no wallet, no network). Then run the same CLIs against Zcash testnet. All commands run from the repository root.</p>
+    </div>
+
+    <nav class="toc" aria-label="Instructions contents">
+      <a href="#req">requirements</a>
+      <a href="#install">install</a>
+      <a href="#mock">mock demo</a>
+      <a href="#testnet">testnet</a>
+      <a href="#cmds">what each command does</a>
+      <a href="#trouble">troubleshooting</a>
+    </nav>
+
+    <div class="block" id="req">
+      <h3><span class="n">5.1</span>Requirements</h3>
+      <ul class="req">
+        <li><b>Python 3.12</b><span>with <code>cryptography</code> (AES-256-GCM) and <code>pynacl</code> (Ed25519, SealedBox)</span></li>
+        <li><b>git</b><span>to clone zpulse and zcash-devtool</span></li>
+        <li><b>Rust 1.99+ / cargo</b><span>testnet only: builds the zcash-devtool light client</span></li>
+        <li><b>Network to testnet.zec.rocks</b><span>testnet only: lightwalletd, no full node</span></li>
+        <li><b>Testnet ZEC (TAZ)</b><span>testnet only: ~0.05 TAZ covers a full demo</span></li>
+        <li><b>A browser</b><span>optional: the live dashboard at 127.0.0.1:8787</span></li>
+      </ul>
+    </div>
+
+    <div class="block" id="install">
+      <h3><span class="n">5.2</span>Install</h3>
+      <div class="code"><div class="code-bar"><span>shell</span><button type="button" class="copy">copy</button></div><pre><code>git clone https://github.com/vipenl26/zpulse
+cd zpulse
+pip install cryptography pynacl</code></pre></div>
+    </div>
+
+    <div class="block" id="mock">
+      <h3><span class="n">5.3</span>Run the offline mock demo</h3>
+      <p>The demo script runs the full flow plus a duress run on an in-process mock chain, and exits non-zero on failure (it doubles as the end-to-end test). <code>ZPULSE_BACKEND=mock</code> is the default.</p>
+      <div class="code"><div class="code-bar"><span>one shot</span><button type="button" class="copy">copy</button></div><pre><code>demo/mock_demo.sh                                     <span class="c"># full flow + duress run, exits non-zero on failure</span>
+python3 dashboard/serve.py --data ./data --port 8787  <span class="c"># open http://127.0.0.1:8787</span></code></pre></div>
+      <p class="note muted" style="margin-top:14px">Step by step, as the demo script runs it:</p>
+      <div class="code"><div class="code-bar"><span>step by step (mock)</span><button type="button" class="copy">copy</button></div><pre><code>python3 -m zpulse.principal init --name leak --file dossier.txt --threshold 3 --interval 20 --grace 5
+for w in w1 w2 w3 w4 w5; do python3 -m zpulse.watcher enroll --id $w --vault data/vaults/leak/vault.json; done
+python3 -m zpulse.principal seal --name leak
+for w in w1 w2 w3 w4 w5; do python3 -m zpulse.watcher run --id $w --packet data/vaults/leak/packets/$w.json --poll 2 &amp; done
+python3 -m zpulse.principal pulse --name leak            <span class="c"># heartbeat (repeat to stay alive)</span>
+python3 -m zpulse.principal pulse --name leak --duress   <span class="c"># ...or fire it right now</span>
+python3 -m zpulse.principal status --name leak
+python3 -m zpulse.reveal --vault data/vaults/leak/vault.json --watch   <span class="c"># anyone can run this</span></code></pre></div>
+    </div>
+
+    <div class="block" id="testnet">
+      <h3><span class="n">5.4</span>Run on Zcash testnet</h3>
+      <p>Same CLIs with <code>--backend testnet</code> (or <code>export ZPULSE_BACKEND=testnet</code>). Wallets are zcash-devtool wallets under <code>wallet/data/&lt;name&gt;/</code>, server <code>testnet.zec.rocks</code>. Testnet blocks come about every 75 s: use minutes, not seconds, for interval and grace.</p>
+      <ol class="st-list">
+        <li>
+          <div class="h"><span class="k">01</span>Build the light client with the patch</div>
+          <p>zpulse uses <a href="https://github.com/zcash/zcash-devtool">zcash-devtool</a> at commit <code>0b3436b</code> plus a 14-line patch that adds <code>--min-confirmations</code> to <code>pay</code>.</p>
+          <div class="code"><div class="code-bar"><span>shell</span><button type="button" class="copy">copy</button></div><pre><code>git clone https://github.com/zcash/zcash-devtool wallet/zcash-devtool
+git -C wallet/zcash-devtool checkout 0b3436b
+git -C wallet/zcash-devtool apply ../zcash-devtool-pay-min-confirmations.patch
+cargo build --release --manifest-path wallet/zcash-devtool/Cargo.toml</code></pre></div>
+          <p class="note">Already have a binary? Set <code>ZCASH_DEVTOOL=/path/to/zcash-devtool</code> instead.</p>
+        </li>
+        <li>
+          <div class="h"><span class="k">02</span>Select the testnet backend</div>
+          <div class="code"><div class="code-bar"><span>shell</span><button type="button" class="copy">copy</button></div><pre><code>export ZPULSE_BACKEND=testnet
+mkdir -p data/logs</code></pre></div>
+        </li>
+        <li>
+          <div class="h"><span class="k">03</span>Create the principal wallet</div>
+          <p>Prints the wallet's unified address.</p>
+          <div class="code"><div class="code-bar"><span>shell</span><button type="button" class="copy">copy</button></div><pre><code>python3 wallet/zwallet.py principal init</code></pre></div>
+        </li>
+        <li>
+          <div class="h"><span class="k">04</span>Fund it with testnet ZEC (TAZ)</div>
+          <p>Valar faucet gives 0.125 TAZ per IP per day. The <a href="https://zcashfaucet.jinolabs.xyz">Jino Labs faucet</a> (browser proof-of-work) gives 0.1 TAZ per address per day. On 4 Nov 2026 both public faucets were flaky, so a Zcash mentor sending ~0.05 TAZ was the fastest route.</p>
+          <div class="code"><div class="code-bar"><span>shell</span><button type="button" class="copy">copy</button></div><pre><code>python3 wallet/faucet.py &lt;unified address&gt;      <span class="c"># Valar faucet</span>
+python3 wallet/zwallet.py principal shield       <span class="c"># only if funds arrived transparent</span>
+python3 wallet/zwallet.py principal sync         <span class="c"># sync and print balance</span>
+python3 wallet/zwallet.py principal balance</code></pre></div>
+          <p class="note">You need shielded TAZ for n &times; heartbeat_zat &times; pulses, plus fees.</p>
+        </li>
+        <li>
+          <div class="h"><span class="k">05</span>Init the vault</div>
+          <p>Creates the <code>release-&lt;vault_id&gt;</code> wallet and stores its address, viewing key (UFVK) and birthday height in the public manifest. These timings worked on the live run.</p>
+          <div class="code"><div class="code-bar"><span>shell</span><button type="button" class="copy">copy</button></div><pre><code>echo "Dossier: ..." &gt; data/dossier.txt
+python3 -m zpulse.principal init --name leak --file data/dossier.txt \
+    --threshold 3 --interval 300 --grace 120 --heartbeat-zat 20000</code></pre></div>
+        </li>
+        <li>
+          <div class="h"><span class="k">06</span>Enroll watchers</div>
+          <p>Each watcher creates its own wallet (<code>watcher-wN</code>) and a fresh diversified address for this vault.</p>
+          <div class="code"><div class="code-bar"><span>shell</span><button type="button" class="copy">copy</button></div><pre><code>for w in w1 w2 w3 w4 w5; do python3 -m zpulse.watcher enroll --id $w --vault data/vaults/leak/vault.json; done</code></pre></div>
+        </li>
+        <li>
+          <div class="h"><span class="k">07</span>Seal, then pulse immediately</div>
+          <p>Seal seals one share to each watcher and deletes the vault key. Send heartbeat #1 right away: the first deadline is <code>sealed_ts + interval + grace</code>.</p>
+          <div class="code"><div class="code-bar"><span>shell</span><button type="button" class="copy">copy</button></div><pre><code>python3 -m zpulse.principal seal --name leak
+python3 -m zpulse.principal pulse --name leak       <span class="c"># -&gt; {"txid": ..., "seq": 1, "ts": ...}</span></code></pre></div>
+          <p class="note">One tx, n shielded outputs, the same signed memo. On the explorer only the tx is visible; amounts and memos are shielded.</p>
+        </li>
+        <li>
+          <div class="h"><span class="k">08</span>Start the watchers (after heartbeat #1 is mined)</div>
+          <p>Wait 1-3 min for the heartbeat to land in a block, then start them (one terminal each, or in the background). <code>--poll 45</code> is comfortable on a laptop.</p>
+          <div class="code"><div class="code-bar"><span>shell</span><button type="button" class="copy">copy</button></div><pre><code>for w in w1 w2 w3 w4 w5; do
+  python3 -m zpulse.watcher run --id $w --packet data/vaults/leak/packets/$w.json --poll 45 \
+     &gt; data/logs/leak-$w.log 2&gt;&amp;1 &amp;
+done
+python3 dashboard/serve.py --data ./data --port 8787   <span class="c"># optional live view</span></code></pre></div>
+        </li>
+        <li>
+          <div class="h"><span class="k">09</span>Stay alive</div>
+          <p>Pulse again before every <code>interval</code> runs out. Every watcher moves its deadline forward.</p>
+          <div class="code"><div class="code-bar"><span>shell</span><button type="button" class="copy">copy</button></div><pre><code>python3 -m zpulse.principal pulse --name leak
+python3 -m zpulse.principal status --name leak</code></pre></div>
+        </li>
+        <li>
+          <div class="h"><span class="k">10</span>Go silent, then reveal</div>
+          <p>Stop pulsing. After <code>interval + grace</code> with no new heartbeat, each watcher sends <code>ZP1 SH &lt;vault&gt; &lt;wid&gt; &lt;share&gt; &lt;sig&gt;</code> to the release address. Anyone can then reveal: it imports the release UFVK into a view-only wallet, verifies each share signature against the manifest, and decrypts once <code>threshold</code> distinct watchers have released.</p>
+          <div class="code"><div class="code-bar"><span>shell</span><button type="button" class="copy">copy</button></div><pre><code>python3 -m zpulse.reveal --vault data/vaults/leak/vault.json --watch --poll 60 --timeout 3600</code></pre></div>
+        </li>
+        <li>
+          <div class="h"><span class="k warn">11</span><span class="warn">Duress</span></div>
+          <p>Looks identical on-chain; watchers release at once.</p>
+          <div class="code"><div class="code-bar"><span>shell</span><button type="button" class="copy">copy</button></div><pre><code>python3 -m zpulse.principal pulse --name leak --duress</code></pre></div>
+        </li>
+        <li>
+          <div class="h"><span class="k">12</span>Cancel</div>
+          <p>Watchers mark the vault cancelled and shred their share. A coerced cancel cannot be told apart from a real one; if you fear that, don't use cancel.</p>
+          <div class="code"><div class="code-bar"><span>shell</span><button type="button" class="copy">copy</button></div><pre><code>python3 -m zpulse.principal cancel --name leak</code></pre></div>
+        </li>
+      </ol>
+    </div>
+
+    <div class="block" id="cmds">
+      <h3><span class="n">5.5</span>What each command does</h3>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>command</th><th>who runs it</th><th>what it does</th></tr></thead>
+          <tbody>
+            <tr><td class="cmd"><code>principal init</code></td><td>principal</td><td>Encrypts the dossier into <code>vault.bin</code> (AES-256-GCM), creates signing + duress keys and the release address, writes the public manifest <code>vault.json</code>. Refuses to overwrite an existing vault.</td></tr>
+            <tr><td class="cmd"><code>watcher enroll</code></td><td>each watcher</td><td>Creates the watcher's Ed25519 identity and wallet, plus a fresh diversified address for this vault only.</td></tr>
+            <tr><td class="cmd"><code>principal seal</code></td><td>principal</td><td>Splits the key with Shamir t-of-n, seals one share to each watcher (SealedBox) as <code>packets/wN.json</code>, then deletes the vault key.</td></tr>
+            <tr><td class="cmd"><code>watcher run</code></td><td>each watcher</td><td>Polls its own wallet, verifies heartbeats (signature, seq, chain time), moves its deadline, and posts its share to the release address when the rule says so.</td></tr>
+            <tr><td class="cmd"><code>principal pulse</code></td><td>principal</td><td>Syncs, then sends one shielded tx paying every watcher with a signed <code>ZP1 HB</code> memo.</td></tr>
+            <tr><td class="cmd"><code>pulse --duress</code></td><td>principal (coerced)</td><td>Same shape, size and amount, signed with the duress key. Watchers release at once.</td></tr>
+            <tr><td class="cmd"><code>principal status</code></td><td>principal</td><td>Shows sealed state, threshold, last heartbeat seq and each watcher.</td></tr>
+            <tr><td class="cmd"><code>principal cancel</code></td><td>principal</td><td>Sends a signed <code>ZP1 CX</code> memo; watchers mark cancelled and shred their share.</td></tr>
+            <tr><td class="cmd"><code>zpulse.reveal</code></td><td>anyone</td><td>Builds a view-only wallet from the release viewing key, verifies share signatures, combines t shares and decrypts <code>vault.bin</code>.</td></tr>
+            <tr><td class="cmd"><code>dashboard/serve.py</code></td><td>anyone</td><td>Stdlib HTTP server for the single-file live view: watcher cards, countdown, chain ticker.</td></tr>
+            <tr><td class="cmd"><code>wallet/zwallet.py</code></td><td>operator</td><td>Thin wrapper over zcash-devtool: <code>init</code>, <code>sync</code>, <code>balance</code>, <code>shield</code>, <code>addresses</code>, <code>ufvk</code>, <code>tx</code>.</td></tr>
+            <tr><td class="cmd"><code>wallet/faucet.py</code></td><td>operator</td><td>Claims testnet TAZ from the Valar faucet for an address.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="block" id="trouble">
+      <h3><span class="n">5.6</span>Troubleshooting</h3>
+      <ul class="trouble">
+        <li><b>Memos need enhance.</b>Compact-block sync carries no memo bytes. <code>ZWallet.received()</code> runs <code>zcash-devtool wallet enhance</code> before <code>list-tx</code>; without it every heartbeat reads as "payment with no memo" and the watchers fire at the deadline.</li>
+        <li><b>Confirmations.</b>The devtool's default spend policy wants 10 confirmations on notes received from others. zpulse calls <code>send</code>/<code>pay</code> with <code>--min-confirmations 1</code> (env <code>ZCASH_MIN_CONF</code>), which is why the patch is needed.</li>
+        <li><b>Start watchers after heartbeat #1 is mined.</b>Seal, pulse immediately, then start the watchers once the heartbeat is in a block (1-3 min). A slow block plus early watchers can fire the switch before heartbeat #1 lands.</li>
+        <li><b>Faucets are flaky.</b>Try the Valar faucet (<code>wallet/faucet.py</code>), then Jino Labs, or ask a Zcash mentor for ~0.05 TAZ. Shield transparent funds with <code>zwallet.py principal shield</code>.</li>
+        <li><b><code>release failed, will retry: ... insufficient</code></b>The watcher's heartbeat note is not yet spendable (wait 1-2 blocks) or its wallet is unfunded. It retries every poll.</li>
+        <li><b><code>reveal</code> sees 0 shares.</b>The view-only wallet may need a full sync from <code>release_birthday</code>. Rerun it; it resumes.</li>
+        <li><b>Laptop load and sleep.</b>Five watchers running sync + enhance + list-tx every 30 s is heavy; use <code>--poll 45</code>. A sleeping laptop stalls every watcher, and they all release within seconds of waking.</li>
+        <li><b>State lives on disk.</b>Wallets under <code>wallet/data/</code>, vault state under <code>data/</code>. <code>data/</code> holds secret keys: keep it out of git.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<div class="wrap"><div class="rule" aria-hidden="true">+---[ <span>don't trust. verify.</span> ]------------------------------------------------------------------------------------------------------------------------------------------+</div></div>
+
+<!-- ============ EVIDENCE ============ -->
+<section id="evidence">
+  <div class="wrap">
+    <div class="sh">
+      <span class="idx"><b>06</b> / testnet evidence, 4 nov 2026</span>
+      <h2>Don't trust. Verify.</h2>
+      <p class="lede">Everything below happened on Zcash testnet, in the Ironwood shielded pool (NU6.3), via <code>testnet.zec.rocks</code>. Each txid links to testnet.zecblock.com.</p>
+    </div>
+
+<pre class="armor" aria-label="Vault manifest summary">-----BEGIN ZPULSE MANIFEST-----
+vault:      <b>78d34ee1f3122a6e</b>
+threshold:  3-of-5
+watchers:   w1 w2 w3 w4 w5  (own wallet, fresh diversified address each)
+heartbeat:  5 x 20,000 zat + signed memo, fee 30,000 zat
+release:    1,000 zat to release address + 10,000 zat fee, paid from the heartbeat
+reveal:     view-only wallet from the published viewing key, 3 shares, 12 s
+-----END ZPULSE MANIFEST-----</pre>
+
+    <div class="ev-h"><h3>Vault 78d34ee1f3122a6e</h3><span>3-of-5, heartbeat then release by all five watchers</span></div>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>step</th><th>txid</th></tr></thead>
+        <tbody>
+          <tr><td>heartbeat #1: ONE tx, 5 shielded outputs of 20,000 zat + signed memo, fee 30,000 zat, block 4581588</td><td class="tx"><a href="https://testnet.zecblock.com/tx/3b8edb23d74567682d3b27cc8f02ae2f84156263b8beb812a26110a2fb3b6829">3b8edb23d74567682d3b27cc8f02ae2f84156263b8beb812a26110a2fb3b6829</a></td></tr>
+          <tr><td>w1 releases its share (memo <code>ZP1 SH ...</code>) to the release address</td><td class="tx"><a href="https://testnet.zecblock.com/tx/3311672af1f79dc29435fed8e0937d1d0c2b9b03e7f1d8c0fa75c6f44d9f9db0">3311672af1f79dc29435fed8e0937d1d0c2b9b03e7f1d8c0fa75c6f44d9f9db0</a></td></tr>
+          <tr><td>w2</td><td class="tx"><a href="https://testnet.zecblock.com/tx/64b34426de15a19d4dc1bc4eb659741ca2016076090344d767a52e104ac4074e">64b34426de15a19d4dc1bc4eb659741ca2016076090344d767a52e104ac4074e</a></td></tr>
+          <tr><td>w3</td><td class="tx"><a href="https://testnet.zecblock.com/tx/09c419abfac51bc1e1fd786c2b00b45588c50c643bab140e92e0149b4d1e6260">09c419abfac51bc1e1fd786c2b00b45588c50c643bab140e92e0149b4d1e6260</a></td></tr>
+          <tr><td>w4</td><td class="tx"><a href="https://testnet.zecblock.com/tx/5ac4745079605d80578e579e2f60645e155bf14400b41db4a4548637d9940de6">5ac4745079605d80578e579e2f60645e155bf14400b41db4a4548637d9940de6</a></td></tr>
+          <tr><td>w5</td><td class="tx"><a href="https://testnet.zecblock.com/tx/b3b33bb13763a629979aeae47b58d7483c29b153af47b622af94fc3e4e824694">b3b33bb13763a629979aeae47b58d7483c29b153af47b622af94fc3e4e824694</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted" style="margin-top:14px;font-size:.88rem"><code>python3 -m zpulse.reveal</code> then created a brand-new view-only wallet from the release viewing key in the public manifest, scanned the chain, verified the five watcher signatures, combined three shares and decrypted <code>vault.bin</code> in 12 s. No spending key of anyone was involved in the reveal.</p>
+
+    <div class="ev-h"><h3>Vault d333806ab0c937e7 (leak2)</h3><span>two heartbeats, then silence</span></div>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>step</th><th>txid</th></tr></thead>
+        <tbody>
+          <tr><td>heartbeat #1 (seq 1), 5 outputs, <time>09:28 UTC / 14:58 IST</time></td><td class="tx"><a href="https://testnet.zecblock.com/tx/449f7b65f4edcce1ab31b68e7068240ff35c46a7168f29693ee053a330c23520">449f7b65f4edcce1ab31b68e7068240ff35c46a7168f29693ee053a330c23520</a></td></tr>
+          <tr><td>heartbeat #2 (seq 2), <time>09:31 UTC / 15:01 IST</time>: every watcher moved its deadline forward</td><td class="tx"><a href="https://testnet.zecblock.com/tx/63ddd6ac26d2b9682bfea0c396b431e7946fff4885f18f52581cfbd952105497">63ddd6ac26d2b9682bfea0c396b431e7946fff4885f18f52581cfbd952105497</a></td></tr>
+          <tr><td class="muted">principal goes silent; deadline (last heartbeat + 5 min + 2 min grace) passes</td><td class="tx muted">--</td></tr>
+          <tr><td>w1 releases</td><td class="tx"><a href="https://testnet.zecblock.com/tx/22db443dd3cb81e6318e6229a40d1a0334eb1f39c9ef5c14261f86e974c7a325">22db443dd3cb81e6318e6229a40d1a0334eb1f39c9ef5c14261f86e974c7a325</a></td></tr>
+          <tr><td>w2 releases</td><td class="tx"><a href="https://testnet.zecblock.com/tx/eea13b5bb1f7cbf7f5853a1f142b8fd9a8dd8b290ba902ec8a3ce8ee3a9ac8cb">eea13b5bb1f7cbf7f5853a1f142b8fd9a8dd8b290ba902ec8a3ce8ee3a9ac8cb</a></td></tr>
+          <tr><td>w3 releases</td><td class="tx"><a href="https://testnet.zecblock.com/tx/12fb1feea54d5aa8f288c9b7e00a076f65f5b49e176d3c8f08a81379fe68271f">12fb1feea54d5aa8f288c9b7e00a076f65f5b49e176d3c8f08a81379fe68271f</a></td></tr>
+          <tr><td>w4 releases</td><td class="tx"><a href="https://testnet.zecblock.com/tx/162fff83aa8e30613f83e82a666c253026f02d4e7b24f4765ddc91a278981694">162fff83aa8e30613f83e82a666c253026f02d4e7b24f4765ddc91a278981694</a></td></tr>
+          <tr><td>w5 releases</td><td class="tx"><a href="https://testnet.zecblock.com/tx/1e16f15a98b6e1913fb5d359981a1fc5d2afc6fb037486c9d12583ae14585b76">1e16f15a98b6e1913fb5d359981a1fc5d2afc6fb037486c9d12583ae14585b76</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout"><b>Honest note.</b> The first vault released because of a bug we found live, not because the principal went silent. Compact-block sync does not carry memos, so watchers saw the payment but a null memo, treated it as "no valid heartbeat", and fired at the deadline. The fix (run <code>zcash-devtool wallet enhance</code> before reading memos) is in <code>wallet/zwallet.py</code>. The switch did exactly what it should when it could not verify a heartbeat.</div>
+  </div>
+</section>
+
+<div class="wrap"><div class="rule" aria-hidden="true">+---------------------------------------------------------------------------------------------------------------------------------------------------------------+</div></div>
+
+<!-- ============ THREAT MODEL ============ -->
+<section id="threat-model">
+  <div class="wrap">
+    <div class="sh">
+      <span class="idx"><b>07</b> / threat model</span>
+      <h2>What it solves. What it doesn't.</h2>
+    </div>
+    <p class="prop">zpulse aims for one property: <strong>the dossier becomes public if, and only if, the principal stops sending valid heartbeats (or sends a duress heartbeat), and at least t of n watchers act on it.</strong> Before that, no one, including any t-1 watchers, can read it.</p>
+    <div class="tm">
+      <div class="col ok">
+        <h3>handled</h3>
+        <ul>
+          <li><strong>Coerced check-in:</strong> the duress key signs a heartbeat identical in shape, size and amount that tells watchers to release now.</li>
+          <li><strong>Laptop seizure after seal:</strong> the vault key is deleted, so the vault cannot be decrypted from it.</li>
+          <li><strong>Seizing fewer than n-t+1 watchers</strong> does not stop release; a stolen packet is useless without that watcher's <code>identity.key</code>.</li>
+          <li><strong>t-1 shares reveal nothing</strong> (Shamir, information-theoretic).</li>
+          <li><strong>Forged or replayed heartbeats:</strong> signed over vault id, seq and ts; seq must increase; deadlines use chain time of the carrying tx.</li>
+          <li><strong>Junk on the release address</strong> is ignored: shares must be signed by a watcher key in the manifest.</li>
+          <li><strong>Metadata:</strong> shielded txs hide sender, receivers, amounts and memos. Watchers are funded by every heartbeat.</li>
+        </ul>
+      </div>
+      <div class="col no">
+        <h3>not solved</h3>
+        <ul>
+          <li>A seized principal key lets the attacker keep the switch alive forever with forged heartbeats.</li>
+          <li>Coerced <code>cancel</code> (if you enable it).</li>
+          <li>t colluding or captured watchers can release early.</li>
+          <li>Watcher liveness relies on people. No on-chain enforcement, no slashing.</li>
+          <li>Timing metadata at the network layer ("a shielded tx every 48 h").</li>
+          <li>Long-term ciphertext hosting: <code>vault.bin</code> must be mirrored (IPFS, torrent, friends).</li>
+          <li>Legal pressure on watchers to <em>not</em> act; spread them across jurisdictions.</li>
+          <li>Hackathon code on testnet. No audit, no side-channel hardening, no secure deletion guarantees. Do not protect a real life with it yet.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="muted" style="margin-top:22px;font-size:.88rem">Full analysis: <a href="https://github.com/vipenl26/zpulse/blob/main/THREAT_MODEL.md">THREAT_MODEL.md</a>.</p>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="foot">
+  <div class="wrap foot-grid">
+    <div>
+      <div class="brand">zpulse_</div>
+      <p style="margin-top:12px">Built for <strong>Zcash Presents: Free Society Hackathon</strong> (WebZero x Zcash x Bitrefill), Mumbai during Devcon, 4-5 Nov 2026, Privacy track.</p>
+    </div>
+    <div>
+      <p><a href="https://github.com/vipenl26/zpulse">github.com/vipenl26/zpulse</a></p>
+      <p><a href="#instructions">instructions</a></p>
+      <p><a href="#evidence">testnet evidence</a></p>
+    </div>
+    <div>
+      <p>Open source under the Apache License 2.0.</p>
+      <p class="muted">Python 3.12 &middot; cryptography &middot; pynacl &middot; zcash-devtool</p>
+      <p class="muted">Cypherpunks write code.</p>
+    </div>
+  </div>
+</footer>
+
+</div>
+<script>
+(function(){
+  var root=document.querySelector('.zp');if(!root)return;
+  var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* copy buttons */
+  root.querySelectorAll('.code').forEach(function(box){
+    var btn=box.querySelector('.copy'),code=box.querySelector('pre code');if(!btn||!code)return;
+    btn.setAttribute('aria-label','Copy command to clipboard');
+    function selectIt(){
+      try{var r=document.createRange();r.selectNodeContents(code);var s=window.getSelection();s.removeAllRanges();s.addRange(r);}catch(e){}
+      btn.textContent='selected: press ctrl/cmd+c';btn.className='copy sel';reset();
+    }
+    function reset(){clearTimeout(btn._t);btn._t=setTimeout(function(){btn.textContent='copy';btn.className='copy';},2200);}
+    btn.addEventListener('click',function(){
+      var text=code.textContent.replace(/ /g,' ');
+      try{
+        if(navigator.clipboard&&navigator.clipboard.writeText){
+          navigator.clipboard.writeText(text).then(function(){btn.textContent='copied';btn.className='copy ok';reset();},selectIt);
+        }else{selectIt();}
+      }catch(e){selectIt();}
+    });
+  });
+
+  /* heartbeat monitor (visual demo only) */
+  var mon=document.getElementById('monitor'),cd=document.getElementById('cd'),seqEl=document.getElementById('seq'),
+      st=document.getElementById('mon-status'),lu=document.getElementById('lp-utc'),li=document.getElementById('lp-ist');
+  var INTERVAL=120,left=INTERVAL,seq=1,cycle=0,pulseAt=pick();
+  function pad(n,w){n=String(n);while(n.length<(w||2))n='0'+n;return n;}
+  function hms(d){return pad(d.getUTCHours())+':'+pad(d.getUTCMinutes())+':'+pad(d.getUTCSeconds());}
+  function stamp(){var d=new Date();lu.textContent=hms(d);li.textContent=hms(new Date(d.getTime()+19800000));}
+  function pick(){cycle++;return (cycle%3===0)?7:(40+Math.floor(Math.random()*45));}
+  function render(){
+    cd.textContent=pad(Math.floor(left/60))+':'+pad(left%60);
+    var warn=left<=30;mon.classList.toggle('warn',warn);
+    st.textContent=warn?'heartbeat overdue':'armed';
+  }
+  function pulse(){
+    seq++;seqEl.textContent=pad(seq,4);left=INTERVAL;pulseAt=pick();stamp();
+    mon.classList.add('flash');setTimeout(function(){mon.classList.remove('flash');},reduce?0:600);
+  }
+  stamp();render();
+  setInterval(function(){left--;if(left<=pulseAt){pulse();}render();},1000);
+
+  /* quotes: featured quote, slow rotation, click to pin */
+  var feat=document.getElementById('qfeat'),ft=document.getElementById('qfeat-t'),fa=document.getElementById('qfeat-a'),
+      qs=Array.prototype.slice.call(root.querySelectorAll('#qgrid .q')),qi=0,paused=false;
+  function show(i){
+    qi=i;qs.forEach(function(q,j){q.classList.toggle('on',j===i);q.setAttribute('aria-pressed',j===i?'true':'false');});
+    var t=qs[i].querySelector('.qt').textContent,a=qs[i].querySelector('.qa').textContent;
+    if(reduce){ft.textContent=t;fa.textContent='-- '+a;return;}
+    feat.classList.add('fade');setTimeout(function(){ft.textContent=t;fa.textContent='-- '+a;feat.classList.remove('fade');},600);
+  }
+  qs.forEach(function(q,j){q.setAttribute('aria-pressed',j===0?'true':'false');q.addEventListener('click',function(){paused=true;show(j);});});
+  if(!reduce){setInterval(function(){if(!paused)show((qi+1)%qs.length);},9000);}
+})();
+</script>
+</body>
+</html>
