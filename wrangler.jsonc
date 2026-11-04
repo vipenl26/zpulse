@@ -1,0 +1,7 @@
+{
+  // Cloudflare Workers static site: serves site/ (landing page + visualizer).
+  // Deploy with: npx wrangler deploy
+  "name": "zpulse",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": "./site", "not_found_handling": "404-page" }
+}

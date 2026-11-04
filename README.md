@@ -59,6 +59,8 @@ There is no recipient. **The release goes to the world.** No smart contract, no 
 
 ## Website and visualizer
 
+Live (Cloudflare Workers static assets, free plan): **https://zpulse.vipenl26.workers.dev/** (landing page) and **https://zpulse.vipenl26.workers.dev/viz** (four-scenario visualizer). Deploy with `npx wrangler deploy` using `wrangler.jsonc`.
+
 - `site/index.html`: the landing page (what it is, how it works, quotes, full instructions, testnet evidence).
 - `site/viz.html`: an animated visualizer with four scenarios: heartbeat reaches every watcher; two watchers down, nothing lost; pulse stops, 5 of 5 release; pulse stops, only 3 of 5 are up.
 - `INSTRUCTIONS.md`: the complete user manual, every command and flag, derived from the code.

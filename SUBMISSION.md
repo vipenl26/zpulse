@@ -2,6 +2,7 @@
 
 **Event:** Zcash Presents: Free Society Hackathon (WebZero x Zcash x Bitrefill), Mumbai, 4-5 Nov 2026. **Track:** Privacy (build on Zcash).
 **Repo:** https://github.com/vipenl26/zpulse
+**Live site:** https://zpulse.vipenl26.workers.dev/ (visualizer at /viz)
 
 ## One line
 

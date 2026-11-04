@@ -5,3 +5,10 @@ data/
 data-mock/
 wallet/data
 wallet/zcash-devtool
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
