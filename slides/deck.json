@@ -3,7 +3,7 @@
   "createdOnFiles": {"v": 1, "at": "2026-11-04T14:05:00Z"},
   "lists": "css",
   "title": "zpulse",
-  "order": ["cover", "person", "today", "split", "proof-of-life", "no-server", "stops", "duress", "why-zcash", "testnet", "threats", "built", "close"],
+  "order": ["cover", "person", "today", "split", "proof-of-life", "no-server", "stops", "duress", "why-zcash", "testnet", "threats", "demo", "built", "team", "close"],
   "sections": {
     "s1": {"description": "Why a dead man’s switch exists and why the usual ones fail.", "start": "cover"},
     "s2": {"description": "Three first principles: split the secret, prove life cheaply, trust no server.", "start": "split"},
