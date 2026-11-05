@@ -1,0 +1,31 @@
+<section id="packet" data-transition="fade" style="background:#070b09;color:#e4efe6;font-family:'IBM Plex Mono', 'Courier New', monospace;padding:96px 128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;color:#5ef08a;letter-spacing:4px;text-transform:uppercase">What the journalist sends each watcher</p>
+<h2 style="font-family:'Share Tech Mono', 'Courier New', monospace;font-size:64px;font-weight:400;line-height:1.1;color:#e4efe6">One JSON packet per watcher. Nothing in it is secret on its own.</h2>
+<div style="display:flex;gap:48px;align-items:stretch;flex:1;min-height:0">
+<pre style="flex:0 0 1000px;margin:0;background:#0b1310;border:1px solid #1d2b23;padding:32px 40px;font-family:'Share Tech Mono', 'Courier New', monospace;font-size:26px;line-height:1.32;color:#bfd8c8;overflow:hidden"><span style="color:#5ef08a">packets/w1.json</span>
+{
+  "vault_id":     "<span style="color:#ffb000">&lt;16 hex&gt;</span>",
+  "watcher_id":   "w1",
+  "share_sealed": "<span style="color:#ffb000">&lt;Shamir share, sealed to w1's key&gt;</span>",
+  "duress_vk":    "<span style="color:#ffb000">&lt;public half of the second key&gt;</span>",
+  "manifest": {
+    "threshold": 3,  "n": 5,
+    "interval_s": 172800,  "grace_s": 21600,
+    "principal_vk":      "<span style="color:#ffb000">&lt;heartbeat signing key&gt;</span>",
+    "release_address":   "<span style="color:#ffb000">utest1…</span>",
+    "release_ufvk":      "<span style="color:#ffb000">uviewtest1…</span>",
+    "release_birthday":  <span style="color:#ffb000">&lt;block height&gt;</span>,
+    "ciphertext_sha256": "<span style="color:#ffb000">&lt;hash of vault.bin&gt;</span>",
+    "watchers": { "w1": { "address": "<span style="color:#ffb000">utest1…</span>", "vk": "<span style="color:#ffb000">…</span>" }, … },
+    "heartbeat_zat": 20000
+  }
+}</pre>
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:28px;min-width:0">
+<p style="font-size:28px;line-height:1.4;color:#bfd8c8"><b style="color:#5ef08a">share_sealed</b> is one Shamir share, encrypted to this watcher only. Two of these together still say nothing.</p>
+<p style="font-size:28px;line-height:1.4;color:#bfd8c8"><b style="color:#5ef08a">principal_vk</b> and <b style="color:#5ef08a">duress_vk</b> let the watcher tell a real heartbeat from a forced one. Only watchers know there are two keys.</p>
+<p style="font-size:28px;line-height:1.4;color:#bfd8c8"><b style="color:#5ef08a">manifest</b> is public: the release address and its viewing key, the schedule, the hash of the encrypted file. Anyone can verify a reveal against it.</p>
+<p style="font-size:28px;line-height:1.4;color:#8fa596">Sent once, over Signal or in person. After sealing, the journalist deletes the vault key. The laptop no longer holds anything that decrypts the file.</p>
+</div>
+</div>
+<aside>This is the whole handoff: one file per watcher, delivered out of band. Point at share_sealed: it is sealed to that watcher's own key, so even the courier learns nothing. Point at the manifest: it is the public contract, and the same manifest is what the reveal tool checks against. Then say the key line: after seal, the vault key is gone from the journalist's machine.</aside>
+</section>
